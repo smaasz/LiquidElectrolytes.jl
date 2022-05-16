@@ -7,7 +7,7 @@ Data for electrolyte.
 
 $(TYPEDFIELDS)
 """
-@kwdef mutable struct ElectrolyteData{TBoundary}
+@composite @kwdef mutable struct Electrolyte
     "Number of charged species."
     nc::Int=2
 
@@ -38,6 +38,12 @@ $(TYPEDFIELDS)
     "Bulk concentration"
     c_bulk::Vector{Float64}=fill(0.1*mol/dm^3,nc)
 
+    "Bulk voltage"
+    ϕ_bulk::Float64=0
+    
+    "Bulk pressure"
+    p_bulk::Float64=0
+    
     "Molar volume of solvent"
     v0::Float64=1/(55.4*mol/dm^3)
 
@@ -49,41 +55,16 @@ $(TYPEDFIELDS)
     
     "Dielectric permittivity of water"
     ε::Float64=78.49
+end
 
-    "Boundary data"
-    bdata::Union{Nothing,TBoundary}=nothing
+@composite @kwdef mutable struct XXX
+    Electrolyte...
 end
 
 
+Cdl0(data)=sqrt( 2*(data.ε)*ε_0*F^2*data.c_bulk[1]/(R*data.T));
 
-@kwdef mutable struct BoundaryData
-    Γ_bulk::Int=2
-    Γ_we::Int=1
-    ϕ_bulk::Float64=0
-    ϕ_we::Float64=0
-    p_bulk::Float64=0
-end
-
-
-
-function bulkbc(f,u,bnode,data)
-    @unpack iϕ,ip,nc,bdata=data
-    if bnode.region==bdata.Γ_bulk
-        boundary_dirichlet!(f,u,bnode,species=iϕ,region=bdata.Γ_bulk,value=bdata.ϕ_bulk)
-        boundary_dirichlet!(f,u,bnode,species=ip,region=bdata.Γ_bulk,value=bdata.p_bulk)
-        for ic=1:nc
-            boundary_dirichlet!(f,u,bnode,species=ic,region=bdata.Γ_bulk,value=data.c_bulk[ic])
-        end
-    end
-end
-
-
-Electrolyte(;kwargs...)=ElectrolyteData{BoundaryData}(;bdata=BoundaryData(),kwargs...)
-ElectrolyteData(bdata;kwargs...)=ElectrolyteData{typeof(bdata)}(;bdata,kwargs...)
-
-Cdl0(data::ElectrolyteData)=sqrt( 2*(data.ε)*ε_0*F^2*data.c_bulk[1]/(R*data.T));
-
-function charge(u,data::ElectrolyteData)
+function charge(u,data)
     q=zero(eltype(u))
     for ic=1:data.nc
         q+=u[ic] * data.z[ic]
@@ -111,9 +92,9 @@ Then we can calculate
 ```
 """
 
-vrel(ic,electrolyte::ElectrolyteData)=electrolyte.v[ic]/electrolyte.v0+electrolyte.κ[ic]
+vrel(ic,electrolyte)=electrolyte.v[ic]/electrolyte.v0+electrolyte.κ[ic]
     
-function c0_barc(c, electrolyte::ElectrolyteData)
+function c0_barc(c, electrolyte)
     c0 = one(eltype(c)) / electrolyte.v0
     barc = zero(eltype(c))
     for ic = 1:electrolyte.nc
@@ -127,11 +108,11 @@ end
 xlog(u)= u<1.0e-50 ? -50.0*one(u) : log(u)
 #xlog(u)=  log(u)
 
-c0_barc(u,i,electrolyte::ElectrolyteData) = @views c0_barc(u[:,i], electrolyte)
+c0_barc(u,i,electrolyte) = @views c0_barc(u[:,i], electrolyte)
 
-log_c0_barc(u,i,electrolyte::ElectrolyteData) = @views xlog.(c0_barc(u, i, electrolyte))
+log_c0_barc(u,i,electrolyte) = @views xlog.(c0_barc(u, i, electrolyte))
 
-function c0(U::Array, electrolyte::ElectrolyteData)
+function c0(U::Array, electrolyte)
     c0 = similar(U[1,:])
     c0 .= 1.0 / electrolyte.v0
     for ic = 1:electrolyte.nc

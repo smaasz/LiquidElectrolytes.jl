@@ -2,7 +2,10 @@ module LiquidElectrolytes
 using Base: @kwdef
 using VoronoiFVM,ExtendableGrids
 using DocStringExtensions
+using CompositeStructs
 using Parameters
+
+
 
 include("units.jl")
 
@@ -23,7 +26,7 @@ export nppunknowns,electrolytedata
 
 
 include("cells.jl")
-export voltagesweep,doublelayercap,bulkbc
+export voltagesweep,doublelayercap,bulkbc, TwoElectrodeCell
 
 
 

@@ -1,5 +1,5 @@
 
-function nppstorage(f, u, node, electrolyte::ElectrolyteData)
+function nppstorage(f, u, node, electrolyte)
     f[electrolyte.iϕ] = zero(eltype(u))
     for ic = 1:electrolyte.nc
         f[ic] = u[ic]
@@ -7,10 +7,10 @@ function nppstorage(f, u, node, electrolyte::ElectrolyteData)
 end
 
 
-charge(u,i,electrolyte::ElectrolyteData) = @views charge(u[:,i], electrolyte::ElectrolyteData)
+charge(u,i,electrolyte) = @views charge(u[:,i], electrolyte)
 
 
-function nppreaction(f, u, node, electrolyte::ElectrolyteData)
+function nppreaction(f, u, node, electrolyte)
     ## Charge density
     f[electrolyte.iϕ] = -charge(u,electrolyte)
     for ic = 1:electrolyte.nc
@@ -19,7 +19,7 @@ function nppreaction(f, u, node, electrolyte::ElectrolyteData)
 end
 
 
-default_bcondition(f,u,bnode,electrolyte::ElectrolyteData)= nothing
+default_bcondition(f,u,bnode,electrolyte)= nothing
 
 
 
@@ -30,7 +30,7 @@ default_bcondition(f,u,bnode,electrolyte::ElectrolyteData)= nothing
 
  see also the 198? Fortran code available via http://www-tcad.stanford.edu/tcad/programs/oldftpable.html
 """
-function nppflux(f, u, edge, electrolyte::ElectrolyteData)
+function nppflux(f, u, edge, electrolyte)
     iϕ = electrolyte.iϕ # index of potential
     ip = electrolyte.ip
     pk = u[ip,1]
@@ -91,7 +91,6 @@ end
 
 electrolytedata(sys)=sys.physics.data
 
-boundarydata(sys)=sys.physics.data.bdata
 
 function nppunknowns(sys)
     @unpack iϕ,ip,nc,c_bulk=electrolytedata(sys)

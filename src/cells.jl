@@ -1,3 +1,23 @@
+function bulkbc(f,u,bnode,data)
+    @unpack iϕ,ip,nc,Γ_bulk,ϕ_bulk,p_bulk,c_bulk=data
+    if bnode.region==Γ_bulk
+        boundary_dirichlet!(f,u,bnode,species=iϕ,region=Γ_bulk,value=ϕ_bulk)
+        boundary_dirichlet!(f,u,bnode,species=ip,region=Γ_bulk,value=p_bulk)
+        for ic=1:nc
+            boundary_dirichlet!(f,u,bnode,species=ic,region=Γ_bulk,value=data.c_bulk[ic])
+        end
+    end
+end
+
+
+
+
+@composite @kwdef mutable struct TwoElectrodeCell
+    Γ_we::Int=1
+    Γ_bulk::Int=2
+end
+
+
 function voltagesweep(sys;ϕmax=0.5,ispec=1,n=100,solver_kwargs...)
 
     factory=VoronoiFVM.TestFunctionFactory(sys)
