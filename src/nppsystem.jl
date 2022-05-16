@@ -77,14 +77,14 @@ end
 
 
 
-function NPPSystem(grid;electrolyte=nothing,bcondition=default_bcondition,kwargs...)
+function NPPSystem(grid;celldata=nothing,bcondition=default_bcondition,kwargs...)
     sys=VoronoiFVM.System(grid;
-                          data=electrolyte,
+                          data=celldata,
                           flux=nppflux,
                           reaction=nppreaction,
                           storage=nppstorage,
                           bcondition,
-                          species=[ 1:electrolyte.nc..., electrolyte.iϕ,electrolyte.ip],
+                          species=[ 1:celldata.nc..., celldata.iϕ,celldata.ip],
                           kwargs...
                           )
 end

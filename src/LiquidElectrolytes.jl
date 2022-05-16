@@ -5,6 +5,8 @@ using DocStringExtensions
 using CompositeStructs
 using Parameters
 
+# until the PR over there is accepted
+CompositeStructs.to_expr(t::Number) = t
 
 
 include("units.jl")
@@ -18,7 +20,7 @@ export @siunits,@phconstants
 
 
 include("electrolyte.jl")
-export Electrolyte,Cdl0,c0_barc,chemical_potentials!, rrate
+export ElectrolyteData,Cdl0,c0_barc,chemical_potentials!, rrate
 
 include("nppsystem.jl")
 export NPPSystem

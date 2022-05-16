@@ -14,6 +14,7 @@ end
 
 @composite @kwdef mutable struct TwoElectrodeCell
     Γ_we::Int=1
+    ϕ_we::Float64=0.0
     Γ_bulk::Int=2
 end
 
@@ -21,10 +22,9 @@ end
 function voltagesweep(sys;ϕmax=0.5,ispec=1,n=100,solver_kwargs...)
 
     factory=VoronoiFVM.TestFunctionFactory(sys)
-    bdata=sys.physics.data.bdata
     data=sys.physics.data
     
-    tf=testfunction(factory,[bdata.Γ_bulk],[bdata.Γ_we] )
+    tf=testfunction(factory,[data.Γ_bulk],[data.Γ_we] )
 
     dϕ=ϕmax/n
     vplus = zeros(0)
@@ -34,9 +34,8 @@ function voltagesweep(sys;ϕmax=0.5,ispec=1,n=100,solver_kwargs...)
     iminus = zeros(0)
     sminus = []
 
-    bdata=boundarydata(sys)
     data=electrolytedata(sys)
-    bdata.ϕ_we=0
+    data.ϕ_we=0
     control=SolverControl(;solver_kwargs...)
 
     iϕ=data.iϕ
@@ -48,7 +47,7 @@ function voltagesweep(sys;ϕmax=0.5,ispec=1,n=100,solver_kwargs...)
         ϕ = 0.0
         while ϕ <= ϕmax
             @info "ϕ=$(ϕ)"
-            bdata.ϕ_we=dir * ϕ
+            data.ϕ_we=dir * ϕ
             solve!(sol, inival, sys; control) 
             inival .= sol
             I=integrate(sys,tf,sol)
@@ -81,9 +80,8 @@ function doublelayercap(sys;ϕmax=1,δ=1.0e-4,n=100,molarity=0.1,solver_kwargs..
     cdlplus = zeros(0)
     vminus = zeros(0)
     cdlminus = zeros(0)
-    bdata=boundarydata(sys)
     data=electrolytedata(sys)
-    bdata.ϕ_we=0
+    data.ϕ_we=0
     
     data.c_bulk.=molarity*mol/dm^3
     
@@ -96,10 +94,10 @@ function doublelayercap(sys;ϕmax=1,δ=1.0e-4,n=100,molarity=0.1,solver_kwargs..
         ϕ = 0.0
         while ϕ <= ϕmax
             @info ϕ 
-            bdata.ϕ_we=dir * ϕ
+            data.ϕ_we=dir * ϕ
             solve!(sol, inival, sys; control=VoronoiFVM.SolverControl(;solver_kwargs...))
             Q = integrate(sys, sys.physics.reaction, sol)
-            bdata.ϕ_we=dir * ϕ+δ
+            data.ϕ_we=dir * ϕ+δ
             inival .= sol
             solve!(sol, inival, sys; control=VoronoiFVM.SolverControl(;solver_kwargs...))
             Qδ = integrate(sys, sys.physics.reaction, sol)

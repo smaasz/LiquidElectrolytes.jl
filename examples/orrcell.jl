@@ -4,10 +4,16 @@ using VoronoiFVM
 using LiquidElectrolytes
 using PyPlot,Colors, Parameters
 using StaticArrays
+using CompositeStructs
 
 @phconstants R 
 @siunits nm cm μF mol dm s
 
+
+@composite @kwdef mutable struct ORRCell
+    ElectrolyteData...
+    TwoElectrodeCell...
+end
 
 function main(;n=100,ϕmax=0.2,molarity=1.0, kwargs...)
     defaults=(; max_round=3,tol_round=1.0e-9, verbose=true, tol_relative=1.0e-7,tol_mono=1.0e-10)
@@ -18,26 +24,25 @@ function main(;n=100,ϕmax=0.2,molarity=1.0, kwargs...)
     io2::Int=3
     
     
-    electrolyte=Electrolyte(;nc=3, z=[1,-2,0], κ=[0,0,0])
-    electrolyte.c_bulk[io2]=0.001*mol/dm^3
-    electrolyte.c_bulk[iso4]=molarity*mol/dm^3
-    electrolyte.c_bulk[ihplus]=2.0*molarity*mol/dm^3
+    celldata=ORRCell(;nc=3, z=[1,-2,0], κ=[0,0,0])
+    celldata.c_bulk[io2]=0.001*mol/dm^3
+    celldata.c_bulk[iso4]=molarity*mol/dm^3
+    celldata.c_bulk[ihplus]=2.0*molarity*mol/dm^3
 
 
-    @info electrolyte
 
-    @assert isapprox(electrolyte.c_bulk'*electrolyte.z,0, atol=1.0e-12)
+
+    @assert isapprox(celldata.c_bulk'*celldata.z,0, atol=1.0e-12)
 
     
     R0::Float64=10.0e-13*mol/(cm^2*s)
     Δg::Float64=0.0
     β::Float64=0.5
-    iϕ=electrolyte.iϕ
+    iϕ=celldata.iϕ
     
     function halfcellbc(f,u,bnode,data)
-        bd=data.bdata
         bulkbc(f,u,bnode,data)
-        if bnode.region==bd.Γ_we
+        if bnode.region==data.Γ_we
             μh2o,μ=chemical_potentials!(f,u,data)
             @show value(μh2o)
             A=-(4*μ[ihplus]+μ[io2]-2μh2o+Δg)/(R*data.T)
@@ -45,7 +50,7 @@ function main(;n=100,ϕmax=0.2,molarity=1.0, kwargs...)
             f.=0.0
             f[ihplus]+=4*r
             f[io2]+=r
-            boundary_dirichlet!(f,u,bnode;species=data.iϕ,region=bd.Γ_we,value=bd.ϕ_we)
+            boundary_dirichlet!(f,u,bnode;species=data.iϕ,region=data.Γ_we,value=data.ϕ_we)
         end
     end
     
@@ -56,7 +61,7 @@ function main(;n=100,ϕmax=0.2,molarity=1.0, kwargs...)
 
 
     grid=simplexgrid(X)
-    cell=NPPSystem(grid;bcondition=halfcellbc,electrolyte)
+    cell=NPPSystem(grid;bcondition=halfcellbc,celldata)
 
     vis=GridVisualizer(resolution=(1200,400),layout=(1,5),Plotter=PyPlot)
 

@@ -1,5 +1,4 @@
 
-
 """
 $(TYPEDEF)
 
@@ -7,7 +6,7 @@ Data for electrolyte.
 
 $(TYPEDFIELDS)
 """
-@composite @kwdef mutable struct Electrolyte
+@composite @kwdef mutable struct ElectrolyteData
     "Number of charged species."
     nc::Int=2
 
@@ -39,10 +38,10 @@ $(TYPEDFIELDS)
     c_bulk::Vector{Float64}=fill(0.1*mol/dm^3,nc)
 
     "Bulk voltage"
-    ϕ_bulk::Float64=0
+    ϕ_bulk::Float64=0.0
     
     "Bulk pressure"
-    p_bulk::Float64=0
+    p_bulk::Float64=0.0
     
     "Molar volume of solvent"
     v0::Float64=1/(55.4*mol/dm^3)
@@ -55,10 +54,6 @@ $(TYPEDFIELDS)
     
     "Dielectric permittivity of water"
     ε::Float64=78.49
-end
-
-@composite @kwdef mutable struct XXX
-    Electrolyte...
 end
 
 
