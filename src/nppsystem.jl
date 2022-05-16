@@ -1,82 +1,27 @@
 
-function nppstorage(f, u, node, data)
-    f[data.iϕ] = zero(eltype(u))
-    for ic = 1:data.nc
+function nppstorage(f, u, node, electrolyte::ElectrolyteData)
+    f[electrolyte.iϕ] = zero(eltype(u))
+    for ic = 1:electrolyte.nc
         f[ic] = u[ic]
     end
 end
 
-function charge(c, data)
-    q=zero(eltype(c))
-    for ic=1:data.nc
-        q+=c[ic] * data.z[ic]
-    end
-    q*F
-end
 
-charge(u,i,data) = @views charge(u[:,i], data)
+charge(u,i,electrolyte::ElectrolyteData) = @views charge(u[:,i], electrolyte::ElectrolyteData)
 
 
-function nppreaction(f, u, node, data)
+function nppreaction(f, u, node, electrolyte::ElectrolyteData)
     ## Charge density
-    f[data.iϕ] = -charge(u,data)
-    for ic = 1:data.nc
+    f[electrolyte.iϕ] = -charge(u,electrolyte)
+    for ic = 1:electrolyte.nc
         f[ic] = 0
     end
 end
 
 
-default_bcondition(f,u,bnode,data)= nothing
+default_bcondition(f,u,bnode,electrolyte::ElectrolyteData)= nothing
 
 
-"""
-Calculate c0 and \bar c
-from using the incompressibility constraint
-```math
- \\sum_{i=0}^N c_i v_i =1
-```
-
-This gives
-
-```math
- c_0v_0=1-\\sum_{i=1}^N c_i v_i
- c_0= 1/v_0 - \\sum_{i=1}^N c_iv_i/v0
-```
-
-Then we can calculate 
-```math
- \\bar c= \\sum_{i=0}^N c_i
-```
-"""
-
-vrel(ic,data)=data.v[ic]/data.v0+data.κ[ic]
-    
-function c0_barc(c, data)
-    c0 = one(eltype(c)) / data.v0
-    barc = zero(eltype(c))
-    for ic = 1:data.nc
-        barc += c[ic]
-        c0 -= c[ic] * vrel(ic,data)
-    end
-    barc += c0
-    c0, barc
-end
-
-xlog(u)= u<1.0e-20 ? -20.0*one(u) : log(u)
-#xlog(u)=  log(u)
-
-c0_barc(u,i,data) = @views c0_barc(u[:,i], data)
-
-log_c0_barc(u,i,data) = @views xlog.(c0_barc(u, i, data))
-
-function csol(U::Array, data)
-    C0 = similar(U[1,:])
-    C0 .= 1.0 / data.v0
-    for ic = 1:data.nc
-        C0 -= U[ic,:] .* vrel(ic,data)
-    end
-    C0
-end
 
 """
  Sedan flux
@@ -85,45 +30,51 @@ end
 
  see also the 198? Fortran code available via http://www-tcad.stanford.edu/tcad/programs/oldftpable.html
 """
-function nppflux(f, u, edge, data)
-    iϕ = data.iϕ # index of potential
-    ip = data.ip
+function nppflux(f, u, edge, electrolyte::ElectrolyteData)
+    iϕ = electrolyte.iϕ # index of potential
+    ip = electrolyte.ip
+    pk = u[ip,1]
+    pl = u[ip,2]
     ## Poisson flux
     dϕ = u[iϕ,1] - u[iϕ,2]
-    dp = u[ip,1] - u[ip,2]
+    dp = pk-pl
+    
+    q1=charge(u,1,electrolyte)
+    q2=charge(u,2,electrolyte)
 
-    q1=charge(u,1,data)
-    q2=charge(u,2,data)
-
-    f[iϕ]=data.ε*ε_0*dϕ
-
+    f[iϕ]=electrolyte.ε*ε_0*dϕ
+    
     f[ip]=dp + (q1+q2)*dϕ/2
-
-    if !iszero(data.v)
-        (log_c0k, log_bar_ck) = log_c0_barc(u, 1, data)
-        (log_c0l, log_bar_cl) = log_c0_barc(u, 2, data)
+    
+    if !iszero(electrolyte.v)
+        (log_c0k, log_bar_ck) = log_c0_barc(u, 1, electrolyte)
+        (log_c0l, log_bar_cl) = log_c0_barc(u, 2, electrolyte)
     end
     
-    for ic = 1:data.nc
-        if !iszero(data.v)
-            ## Caclculate excess chemical potentials
-            muk = -log_bar_ck - (log_c0k - log_bar_ck) * vrel(ic,data)
-            mul = -log_bar_cl - (log_c0l - log_bar_cl) * vrel(ic,data)
+    for ic = 1:electrolyte.nc
+        if !iszero(electrolyte.v)
+            M=electrolyte.M[ic]/electrolyte.M0
+            V=electrolyte.v[ic]+(electrolyte.κ[ic]-M)*electrolyte.v0
+            muk = V*pk/(R*electrolyte.T) -M*log_c0k + (M-1.0)*log_bar_ck
+            mul = V*pl/(R*electrolyte.T) -M*log_c0l + (M-1.0)*log_bar_cl
         else
             muk=0.0
             mul=0.0
         end
         
         ## Combine potential gradient and excess chemical gradient
-        arg = data.Z[ic] * (u[iϕ,1] - u[iϕ,2]) + (muk - mul)
+        arg = electrolyte.Z[ic] * (u[iϕ,1] - u[iϕ,2]) + (muk - mul)
 
         ## Call Bernoulli function
         bp, bm = fbernoulli_pm(arg)
         
         ## Calculate drift-diffusion flux
-        f[ic] = data.D[ic] * (bm * u[ic,1] - bp * u[ic,2])
+        f[ic] = electrolyte.D[ic] * (bm * u[ic,1] - bp * u[ic,2])
     end
 end 
+
+
+
 
 
 function NPPSystem(grid;electrolyte=nothing,bcondition=default_bcondition,kwargs...)
@@ -138,7 +89,7 @@ function NPPSystem(grid;electrolyte=nothing,bcondition=default_bcondition,kwargs
                           )
 end
 
-electrolytedata(sys)::ElectrolyteData=sys.physics.data
+electrolytedata(sys)=sys.physics.data
 
 boundarydata(sys)=sys.physics.data.bdata
 

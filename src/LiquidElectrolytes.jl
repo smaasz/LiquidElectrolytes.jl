@@ -1,5 +1,5 @@
 module LiquidElectrolytes
-
+using Base: @kwdef
 using VoronoiFVM,ExtendableGrids
 using DocStringExtensions
 using Parameters
@@ -8,19 +8,23 @@ include("units.jl")
 
 @phconstants N_A e R ε_0
 const F=N_A*e
-@siunits K mol dm m s
-
+@siunits K mol dm m s g
 
 export @siunits,@phconstants
 
+
+
 include("electrolyte.jl")
-include("halfcell.jl")
-export ElectrolyteData, TBoundary
-export ideally_polarizing_halfcell,oxygen_halfcell,voltagesweep
+export Electrolyte,Cdl0,c0_barc,chemical_potentials!, rrate
 
 include("nppsystem.jl")
 export NPPSystem
 export nppunknowns,electrolytedata
-export NPPHalfCell,doublelayercap
+
+
+include("cells.jl")
+export voltagesweep,doublelayercap,bulkbc
+
+
 
 end # module
