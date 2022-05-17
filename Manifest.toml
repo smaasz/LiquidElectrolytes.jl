@@ -2,7 +2,7 @@
 
 julia_version = "1.8.0-beta3"
 manifest_format = "2.0"
-project_hash = "e37f2d4fac0d90d2025cad632463e0106f929990"
+project_hash = "d31618fd9237dfcd9223cf9f96f554add1b7ab71"
 
 [[deps.AbstractAlgebra]]
 deps = ["GroupsCore", "InteractiveUtils", "LinearAlgebra", "MacroTools", "Markdown", "Random", "RandomExtensions", "SparseArrays", "Test"]
@@ -146,9 +146,9 @@ version = "0.5.2+0"
 
 [[deps.CompositeStructs]]
 deps = ["MacroTools"]
-git-tree-sha1 = "6d4723da3447c84b47a00ea20679c4ccd5ef04ba"
+git-tree-sha1 = "79daafc7716e9c6975c94ec9e1aead9e4ccc1808"
 uuid = "534720e6-2374-40c5-8712-bf9a2f1643c6"
-version = "0.1.2"
+version = "0.1.3"
 
 [[deps.CompositeTypes]]
 git-tree-sha1 = "d5b014b216dc891e81fea299638e4c10c657b582"
@@ -559,9 +559,9 @@ version = "0.4.6"
 
 [[deps.MutableArithmetics]]
 deps = ["LinearAlgebra", "SparseArrays", "Test"]
-git-tree-sha1 = "69caf1c05c3f9428e8405a15cea80936019355ea"
+git-tree-sha1 = "4050cd02756970414dab13b55d55ae1826b19008"
 uuid = "d8a4904e-b15c-11e9-3269-09a3773c0cb0"
-version = "1.0.1"
+version = "1.0.2"
 
 [[deps.NaNMath]]
 git-tree-sha1 = "b086b7ea07f8e38cf122f5016af580881ac914fe"
@@ -642,6 +642,12 @@ version = "0.5.2"
 [[deps.Printf]]
 deps = ["Unicode"]
 uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+
+[[deps.ProgressLogging]]
+deps = ["Logging", "SHA", "UUIDs"]
+git-tree-sha1 = "80d919dee55b9c50e8d9e2da5eeafff3fe58b539"
+uuid = "33c8b6b6-d38a-422a-b730-caa89a2f386c"
+version = "0.1.4"
 
 [[deps.QuadGK]]
 deps = ["DataStructures", "LinearAlgebra"]

@@ -1,13 +1,11 @@
 module LiquidElectrolytes
-using Base: @kwdef
 using VoronoiFVM,ExtendableGrids
 using DocStringExtensions
 using CompositeStructs
 using Parameters
-
-# until the PR over there is accepted
-CompositeStructs.to_expr(t::Number) = t
-
+using ProgressLogging
+using StaticArrays
+using LinearAlgebra
 
 include("units.jl")
 
@@ -20,7 +18,7 @@ export @siunits,@phconstants
 
 
 include("electrolyte.jl")
-export ElectrolyteData,Cdl0,c0_barc,chemical_potentials!, rrate
+export ElectrolyteData,Cdl0,c0_barc,chemical_potentials!, rrate,ldebye
 
 include("nppsystem.jl")
 export NPPSystem
@@ -28,7 +26,7 @@ export nppunknowns,electrolytedata
 
 
 include("cells.jl")
-export voltagesweep,doublelayercap,bulkbc, TwoElectrodeCell
+export voltagesweep,doublelayercap,bulkbc
 
 
 

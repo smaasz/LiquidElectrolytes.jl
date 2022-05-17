@@ -6,7 +6,7 @@ Data for electrolyte.
 
 $(TYPEDFIELDS)
 """
-@composite @kwdef mutable struct ElectrolyteData
+@composite @Base.kwdef mutable struct ElectrolyteData
     "Number of charged species."
     nc::Int=2
 
@@ -42,6 +42,9 @@ $(TYPEDFIELDS)
     
     "Bulk pressure"
     p_bulk::Float64=0.0
+
+    "Bulk boundary number"
+    Γ_bulk::Int=1
     
     "Molar volume of solvent"
     v0::Float64=1/(55.4*mol/dm^3)
@@ -54,6 +57,11 @@ $(TYPEDFIELDS)
     
     "Dielectric permittivity of water"
     ε::Float64=78.49
+
+
+    "Pressure scaling factor"
+    pscale::Float64=1.0e9
+    
 end
 
 
@@ -97,7 +105,7 @@ function c0_barc(c, electrolyte)
         c0 -= c[ic] * vrel(ic,electrolyte)
     end
     barc += c0
-    c0, barc
+    max(1.0e-20,c0), barc
 end
 
 xlog(u)= u<1.0e-50 ? -50.0*one(u) : log(u)
@@ -105,7 +113,7 @@ xlog(u)= u<1.0e-50 ? -50.0*one(u) : log(u)
 
 c0_barc(u,i,electrolyte) = @views c0_barc(u[:,i], electrolyte)
 
-log_c0_barc(u,i,electrolyte) = @views xlog.(c0_barc(u, i, electrolyte))
+log_c0_barc(u,i,electrolyte) = @views log.(c0_barc(u, i, electrolyte))
 
 function c0(U::Array, electrolyte)
     c0 = similar(U[1,:])
@@ -113,13 +121,13 @@ function c0(U::Array, electrolyte)
     for ic = 1:electrolyte.nc
         c0 -= U[ic,:] .* vrel(ic,electrolyte)
     end
-    c0
+    max(c0,0.0)
 end
 
 
 function chemical_potentials!(μ,u,data)
     c0,barc=c0_barc(u,data)
-    p=u[data.ip]
+    p=u[data.ip]*data.pscale
     p_ref=0
     μ0=xlog(c0/barc)*(R*data.T)+data.v0*(p-p_ref)
     for i=1:data.nc
@@ -130,3 +138,9 @@ end
 
 rrate(R0,β,A)=R0*(exp(-β*A) - exp((1-β)*A))
 
+ldebye(data)=sqrt( data.ε*ε_0*R*data.T/(F^2*data.c_bulk[1]))
+
+function wnorm(u,w,p)
+    @views norms=[w[i]*LinearAlgebra.norm(u[i,:],p) for i=1:size(u,1)]
+    LinearAlgebra.norm(norms,p)
+end
