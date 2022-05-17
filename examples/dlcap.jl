@@ -31,7 +31,7 @@ function main(;n=100,ϕmax=1.0,nref=0,kwargs...)
     grid=simplexgrid(X)
     celldata=HalfCellData(Γ_we=1, Γ_bulk=2)
     @show ldebye(celldata)
-    cell=NPPSystem(grid;bcondition,celldata)
+    cell=PNPSystem(grid;bcondition,celldata)
 
     molarities=[0.001,0.01,0.1,1]
     

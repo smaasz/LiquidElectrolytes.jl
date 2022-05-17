@@ -58,11 +58,18 @@ $(TYPEDFIELDS)
     "Dielectric permittivity of water"
     ε::Float64=78.49
 
-
     "Pressure scaling factor"
     pscale::Float64=1.0e9
     
 end
+
+function showstruct(io::IO,this)
+    for name in fieldnames(typeof(this))
+        println(io,"$(lpad(name,20)) = $(getfield(this,name))")
+    end
+end
+
+Base.show(io::IO, this::ElectrolyteData)=showstruct(io,this)
 
 
 Cdl0(data)=sqrt( 2*(data.ε)*ε_0*F^2*data.c_bulk[1]/(R*data.T));

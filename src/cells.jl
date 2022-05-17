@@ -23,7 +23,7 @@ function voltagesweep(sys;ϕmax=0.5,ispec=1,n=100,solver_kwargs...)
     data.ϕ_we=0
     control=SolverControl(;solver_kwargs...)
     iϕ=data.iϕ
-    inival0 = solve(sys;inival=nppunknowns(sys), solver_kwargs...)
+    inival0 = solve(sys;inival=pnpunknowns(sys), solver_kwargs...)
     inival=copy(inival0)
     sol=copy(inival0)
     ϕprogress=0
@@ -75,7 +75,7 @@ function doublelayercap(sys;ϕmax=1,δ=1.0e-4,n=100,molarity=0.1,solver_kwargs..
     data.c_bulk.=molarity*mol/dm^3
     
     iϕ=data.iϕ
-    inival0 = solve(sys,inival=nppunknowns(sys))
+    inival0 = solve(sys,inival=pnpunknowns(sys))
     inival=copy(inival0)
     sol=copy(inival0)
     ϕprogress = 0.0

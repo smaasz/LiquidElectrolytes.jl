@@ -63,7 +63,7 @@ function main(;n=100,ϕmax=0.4,molarity=0.1,nref=0, kwargs...)
 
     @assert isapprox(celldata.c_bulk'*celldata.z,0, atol=1.0e-12)
     
-    cell=NPPSystem(grid;bcondition=halfcellbc,celldata)
+    cell=PNPSystem(grid;bcondition=halfcellbc,celldata)
 
     vis=GridVisualizer(resolution=(1200,400),layout=(1,5),Plotter=PyPlot)
 

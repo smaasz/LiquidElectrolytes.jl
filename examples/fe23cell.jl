@@ -7,7 +7,9 @@ using StaticArrays
 using CompositeStructs
 using StaticArrays
 
-@phconstants R 
+@phconstants N_A e R ε_0
+const F=N_A*e
+
 @siunits nm cm μF mol dm s mA
 
 
@@ -22,17 +24,21 @@ using StaticArrays
     ife2::Int=2
     ife3::Int=3
     iso4::Int=4
+    neutralflag=false
 end
 
+Base.show(io::IO, this::FE23Cell)=showstruct(io,this)
 
 
 function halfcellbc(f,u,bnode,data)
     bulkbc(f,u,bnode,data)
     if bnode.region==data.Γ_we
-        @unpack R0,β,Δg,ihplus,ife2,ife3,iso4,nc=data
-        boundary_dirichlet!(f,u,bnode;species=data.iϕ,region=data.Γ_we,value=data.ϕ_we)
+        @unpack R0,β,Δg,ihplus,ife2,ife3,iso4,iϕ,nc=data
+        if !data.neutralflag
+            boundary_dirichlet!(f,u,bnode;species=data.iϕ,region=data.Γ_we,value=data.ϕ_we)
+        end
         μ0,μ=chemical_potentials!(MVector{4,eltype(u)}(undef),u,data)
-        A=(μ[ife2]-μ[ife3]+Δg)/(R*data.T)
+        A=(μ[ife2]-μ[ife3]+Δg - data.neutralflag*F*(u[iϕ]-data.ϕ_we))/(R*data.T)
         r=rrate(R0,β,A)
         f[ife2]-=r
         f[ife3]+=r
@@ -40,7 +46,7 @@ function halfcellbc(f,u,bnode,data)
 end
 
 
-function main(;nref=0,n=100,ϕmax=0.2, dlcap=false,R0=1.0e-6,kwargs...)
+function main(;nref=0,compare=false,neutral=false,n=100,ϕmax=0.2, dlcap=false,R0=1.0e-6,kwargs...)
     defaults=(; max_round=3,
               tol_round=1.0e-9,
               verbose=false,
@@ -52,11 +58,10 @@ function main(;nref=0,n=100,ϕmax=0.2, dlcap=false,R0=1.0e-6,kwargs...)
     hmax=1.0*nm*2.0^(-nref)
     L=20.0*nm
     X=geomspace(0,L,hmin,hmax)
-
     
     grid=simplexgrid(X)
 
-    celldata=FE23Cell(;nc=4, z=[1,2,3,-2], κ=fill(0,4), Γ_we=1, Γ_bulk=2, R0=R0*mol/(cm^2*s))
+    celldata=FE23Cell(;nc=4, z=[1,2,3,-2], neutralflag=neutral,κ=fill(0,4), Γ_we=1, Γ_bulk=2, R0=R0*mol/(cm^2*s))
 
     @unpack iϕ,ihplus,ife2,ife3,iso4, ip=celldata
     sc=1
@@ -69,8 +74,35 @@ function main(;nref=0,n=100,ϕmax=0.2, dlcap=false,R0=1.0e-6,kwargs...)
     @show celldata
     @show ldebye(celldata)
     
-    cell=NPPSystem(grid;bcondition=halfcellbc,celldata)
+    cell=PNPSystem(grid;bcondition=halfcellbc,celldata)
 
+    if compare
+        celldata.neutralflag=true
+        volts,currs, sols=voltagesweep(cell;ϕmax,n,ispec=ife2,kwargs...)
+        
+        tsol=VoronoiFVM.TransientSolution(sols,volts)
+        
+        for it=1:length(tsol.t)
+            tsol.u[it][ife2,:]/=mol/dm^3
+            tsol.u[it][ife3,:]/=mol/dm^3
+        end
+        
+        celldata.neutralflag=false
+        nvolts,ncurrs, sols=voltagesweep(cell;ϕmax,n,ispec=ife2,kwargs...)
+        
+        ntsol=VoronoiFVM.TransientSolution(sols,volts)
+        
+        for it=1:length(ntsol.t)
+            ntsol.u[it][ife2,:]/=mol/dm^3
+            ntsol.u[it][ife3,:]/=mol/dm^3
+        end
+        vis=GridVisualizer(resolution=(600,400),Plotter=PyPlot,clear=true,legend=:lt)
+        scalarplot!(vis,volts,-currs,color="red",markershape=:utriangle,markersize=7, markevery=10,label="PNP")
+        scalarplot!(vis,nvolts,-ncurrs,clear=false,color=:green,markershape=:none,label="NNP")
+        return (mA/cm^2)
+        return reveal(vis)
+    end
+    
     #---------
     if dlcap
         molarities=[0.001,0.01,0.1,1]
@@ -100,6 +132,7 @@ function main(;nref=0,n=100,ϕmax=0.2, dlcap=false,R0=1.0e-6,kwargs...)
     @show extrema(tsol[ife3,end,:])
 
     xmax=0.25*nm
+    xmax=L
     xlimits=[0,xmax]
     vis=GridVisualizer(resolution=(1200,400),layout=(1,5),Plotter=PyPlot,clear=true)
     aspect=[2*xmax/(ϕmax)]

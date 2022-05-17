@@ -19,10 +19,11 @@ export @siunits,@phconstants
 
 include("electrolyte.jl")
 export ElectrolyteData,Cdl0,c0_barc,chemical_potentials!, rrate,ldebye
+export showstruct
 
-include("nppsystem.jl")
-export NPPSystem
-export nppunknowns,electrolytedata
+include("pnpsystem.jl")
+export PNPSystem
+export pnpunknowns,electrolytedata
 
 
 include("cells.jl")

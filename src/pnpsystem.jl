@@ -1,5 +1,5 @@
 
-function nppstorage(f, u, node, electrolyte)
+function pnpstorage(f, u, node, electrolyte)
     f[electrolyte.iϕ] = zero(eltype(u))
     f[electrolyte.ip] = zero(eltype(u))
     for ic = 1:electrolyte.nc
@@ -11,7 +11,7 @@ end
 charge(u,i,electrolyte) = @views charge(u[:,i], electrolyte)
 
 
-function nppreaction(f, u, node, electrolyte)
+function pnpreaction(f, u, node, electrolyte)
     ## Charge density
     f[electrolyte.iϕ] = -charge(u,electrolyte)
     for ic = 1:electrolyte.nc
@@ -42,14 +42,14 @@ end
 
  see also the 198? Fortran code available via http://www-tcad.stanford.edu/tcad/programs/oldftpable.html
 """
-function nppflux(f, u, edge, electrolyte)
+function pnpflux(f, u, edge, electrolyte)
     iϕ = electrolyte.iϕ # index of potential
     ip = electrolyte.ip
     pk = u[ip,1]
     pl = u[ip,2]
     ## Poisson flux
     dϕ = u[iϕ,1] - u[iϕ,2]
-    f[iϕ]=electrolyte.ε*ε_0*dϕ
+    f[iϕ]=electrolyte.ε*ε_0*dϕ*!electrolyte.neutralflag
     dp = pk-pl
     q1=charge(u,1,electrolyte)
     q2=charge(u,2,electrolyte)
@@ -86,12 +86,12 @@ end
 
 
 
-function NPPSystem(grid;celldata=nothing,bcondition=default_bcondition,kwargs...)
+function PNPSystem(grid;celldata=nothing,bcondition=default_bcondition,kwargs...)
     sys=VoronoiFVM.System(grid;
                           data=celldata,
-                          flux=nppflux,
-                          reaction=nppreaction,
-                          storage=nppstorage,
+                          flux=pnpflux,
+                          reaction=pnpreaction,
+                          storage=pnpstorage,
                           bcondition,
                           species=[ 1:celldata.nc..., celldata.iϕ,celldata.ip],
                           kwargs...
@@ -101,7 +101,7 @@ end
 electrolytedata(sys)=sys.physics.data
 
 
-function nppunknowns(sys)
+function pnpunknowns(sys)
     @unpack iϕ,ip,nc,c_bulk=electrolytedata(sys)
     u=unknowns(sys)
     @views u[iϕ,:] .= 0
