@@ -12,6 +12,10 @@ const F=N_A*e
 
 @siunits nm cm μF mol dm s mA
 
+matplotlib.rcParams["font.size'"]=26
+matplotlib.rcParams["font.weight"]='bold'
+matplotlib.rcParams["grid.linewidth"]=2
+
 
 @composite @kwdef mutable struct FE23Cell
     ElectrolyteData...
