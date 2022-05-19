@@ -1,3 +1,5 @@
+abstract type AbstractElectrolyteData end
+
 
 """
 $(TYPEDEF)
@@ -6,7 +8,7 @@ Data for electrolyte.
 
 $(TYPEDFIELDS)
 """
-@composite @Base.kwdef mutable struct ElectrolyteData
+@composite @Base.kwdef mutable struct ElectrolyteData <: AbstractElectrolyteData
     "Number of charged species."
     nc::Int=2
 
@@ -49,7 +51,7 @@ $(TYPEDFIELDS)
     "Molar volume of solvent"
     v0::Float64=1/(55.4*mol/dm^3)
 
-    "Solvation numbers"
+   "Solvation numbers"
     κ::Vector{Float64}=fill(0,nc)
     
     "Molar volumes"
@@ -60,7 +62,10 @@ $(TYPEDFIELDS)
 
     "Pressure scaling factor"
     pscale::Float64=1.0e9
-    
+
+    "Electroneutrality switch"
+    neutralflag::Bool=false
+
 end
 
 function showstruct(io::IO,this)
@@ -69,10 +74,10 @@ function showstruct(io::IO,this)
     end
 end
 
-Base.show(io::IO, this::ElectrolyteData)=showstruct(io,this)
+Base.show(io::IO, this::AbstractElectrolyteData)=showstruct(io,this)
 
 
-Cdl0(data)=sqrt( 2*(data.ε)*ε_0*F^2*data.c_bulk[1]/(R*data.T));
+Cdl0(data::AbstractElectrolyteData)=sqrt( 2*(data.ε)*ε_0*F^2*data.c_bulk[1]/(R*data.T));
 
 function charge(u,data)
     q=zero(eltype(u))

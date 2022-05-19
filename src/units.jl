@@ -1,6 +1,14 @@
 import Unitful
 import PhysicalConstants
 
+SI(x)=Float64(Unitful.ustrip(Unitful.upreferred(1*x)));
+
+macro  si_str(x)
+    Unitful=getproperty(@__MODULE__,:Unitful)
+    quote
+        Float64($(Unitful).ustrip($(Unitful).upreferred(1*$(Unitful).@u_str($(x)))))
+    end
+end
 
 function _siunits(xs...)
     Unitful=getproperty(@__MODULE__,:Unitful)

@@ -10,11 +10,7 @@ using StaticArrays
 @phconstants N_A e R ε_0
 const F=N_A*e
 
-@siunits nm cm μF mol dm s mA
-
-matplotlib.rcParams["font.size'"]=26
-matplotlib.rcParams["font.weight"]='bold'
-matplotlib.rcParams["grid.linewidth"]=2
+@siunits nm cm μF mol dm s mA A
 
 
 @composite @kwdef mutable struct FE23Cell
@@ -96,14 +92,9 @@ function main(;nref=0,compare=false,neutral=false,n=100,ϕmax=0.2, dlcap=false,R
         
         ntsol=VoronoiFVM.TransientSolution(sols,volts)
         
-        for it=1:length(ntsol.t)
-            ntsol.u[it][ife2,:]/=mol/dm^3
-            ntsol.u[it][ife3,:]/=mol/dm^3
-        end
-        vis=GridVisualizer(resolution=(600,400),Plotter=PyPlot,clear=true,legend=:lt)
+        vis=GridVisualizer(resolution=(600,400),Plotter=PyPlot,clear=true,legend=:lt,xlabel="Δϕ/V",ylabel="I/(A/m^2)")
         scalarplot!(vis,volts,-currs,color="red",markershape=:utriangle,markersize=7, markevery=10,label="PNP")
         scalarplot!(vis,nvolts,-ncurrs,clear=false,color=:green,markershape=:none,label="NNP")
-        return (mA/cm^2)
         return reveal(vis)
     end
     
@@ -124,7 +115,6 @@ function main(;nref=0,compare=false,neutral=false,n=100,ϕmax=0.2, dlcap=false,R
         return
     end
     volts,currs, sols=voltagesweep(cell;ϕmax,n,ispec=ife2,kwargs...)
-
     tsol=VoronoiFVM.TransientSolution(sols,volts)
 
     for it=1:length(tsol.t)
@@ -134,18 +124,25 @@ function main(;nref=0,compare=false,neutral=false,n=100,ϕmax=0.2, dlcap=false,R
 
     @show extrema(tsol[ife2,end,:])
     @show extrema(tsol[ife3,end,:])
-
-    xmax=0.25*nm
-    xmax=L
-    xlimits=[0,xmax]
-    vis=GridVisualizer(resolution=(1200,400),layout=(1,5),Plotter=PyPlot,clear=true)
-    aspect=[2*xmax/(ϕmax)]
-    scalarplot!(vis[1,1],currs,volts,markershape=:none,title="IV",xlabel="I",ylabel="V")
-    scalarplot!(vis[1,2],cell,tsol;species=ife2,aspect,xlimits,title="Fe2+",colormap=:summer)
-    scalarplot!(vis[1,3],cell,tsol;species=ife3,aspect,xlimits,title="Fe3+",colormap=:summer)
-    scalarplot!(vis[1,4],cell,tsol;species=iϕ,aspect,xlimits,title="ϕ",colormap=:bwr)
-    scalarplot!(vis[1,5],cell,tsol;species=ip,aspect,xlimits,title="p",colormap=:summer)
-
+    if true
+        xmax=0.25*nm
+        xmax=L
+        xlimits=[0,xmax]
+        vis=GridVisualizer(resolution=(1200,400),layout=(1,5),Plotter=PyPlot,clear=true)
+        aspect=[2*xmax/(ϕmax)]
+        scalarplot!(vis[1,1],F*currs/(mA/cm^2),volts,markershape=:none,title="IV",xlabel="I",ylabel="V")
+        scalarplot!(vis[1,2],cell,tsol;species=ife2,aspect,xlimits,title="Fe2+",colormap=:summer)
+        scalarplot!(vis[1,3],cell,tsol;species=ife3,aspect,xlimits,title="Fe3+",colormap=:summer)
+        scalarplot!(vis[1,4],cell,tsol;species=iϕ,aspect,xlimits,title="ϕ",colormap=:bwr)
+        scalarplot!(vis[1,5],cell,tsol;species=ip,aspect,xlimits,title="p",colormap=:summer)
+    else
+    
+        vis=GridVisualizer(resolution=(500,300),Plotter=PyPlot,legend=:rb)
+        scalarplot!(vis,grid, tsol[ife2,:,end], color=:red, label="fe2+")
+#        scalarplot!(vis,grid, tsol[iϕ,:,1], color=:red, label="ϕ",flimits=(-2.5e-5,2.5e-5))
+        scalarplot!(vis,grid, tsol[ife3,:,end], color=:green, label="fe3+",clear=false)
+    
+    end
 #    save(plotsdir("1DResults.pdf"),vis)
     reveal(vis)
 end

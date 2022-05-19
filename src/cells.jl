@@ -40,11 +40,11 @@ function voltagesweep(sys;ϕmax=0.5,ispec=1,n=100,solver_kwargs...)
             if dir == 1
                 push!(splus, copy(sol))
                 push!(vplus, dir * ϕ)
-                push!(iplus, I[ispec])
+                push!(iplus, I[ispec]*F/(mA/cm^2))
             else
                 push!(sminus, copy(sol))
                 push!(vminus, dir * ϕ)
-                push!(iminus, I[ispec])
+                push!(iminus, I[ispec]*F/(mA/cm^2))
             end
             ϕ += dϕ
             ϕprogress +=dϕ

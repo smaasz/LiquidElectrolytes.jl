@@ -9,7 +9,7 @@ using PyPlot,Colors
 
 @siunits nm cm μF
 
-@composite @kwdef mutable struct HalfCellData
+@composite @kwdef mutable struct HalfCellData <: AbstractElectrolyteData
     ElectrolyteData...
     Γ_we::Int=1
     ϕ_we::Float64=0.0
@@ -32,7 +32,7 @@ function main(;n=100,ϕmax=1.0,nref=0,kwargs...)
     celldata=HalfCellData(Γ_we=1, Γ_bulk=2)
     @show ldebye(celldata)
     cell=PNPSystem(grid;bcondition,celldata)
-
+    check_allocs!(cell,false)
     molarities=[0.001,0.01,0.1,1]
     
     vis=GridVisualizer(resolution=(500,300),legend=:rt,clear=true,xlabel="φ/V",ylabel="C_dl/(μF/cm^2)",Plotter=PyPlot)
