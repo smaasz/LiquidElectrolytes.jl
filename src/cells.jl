@@ -82,7 +82,7 @@ function doublelayercap(sys;ϕmax=1,δ=1.0e-4,n=100,molarity=0.1,solver_kwargs..
 
     control=VoronoiFVM.SolverControl(max_round=3, tol_round=1.0e-10;solver_kwargs...)
     @withprogress for dir in [1,-1]
-        inival .= inival0
+        sol .= inival0
         ϕ = 0.0
         while ϕ <= ϕmax
 

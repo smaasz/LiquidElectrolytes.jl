@@ -24,7 +24,6 @@ const F=N_A*e
     ife2::Int=2
     ife3::Int=3
     iso4::Int=4
-    neutralflag=false
 end
 
 Base.show(io::IO, this::FE23Cell)=showstruct(io,this)

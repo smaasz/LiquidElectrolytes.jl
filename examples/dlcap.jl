@@ -34,6 +34,7 @@ function main(;n=100,ϕmax=1.0,nref=0,kwargs...)
     cell=PNPSystem(grid;bcondition,celldata)
     check_allocs!(cell,false)
     molarities=[0.001,0.01,0.1,1]
+
     
     vis=GridVisualizer(resolution=(500,300),legend=:rt,clear=true,xlabel="φ/V",ylabel="C_dl/(μF/cm^2)",Plotter=PyPlot)
     hmol=1/length(molarities)

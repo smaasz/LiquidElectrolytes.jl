@@ -6,8 +6,9 @@ using PyPlot,Colors, Parameters
 using StaticArrays
 using CompositeStructs
 
-@phconstants R 
+@phconstants R N_A e
 @siunits nm cm μF mol dm s
+const F=N_A*e
 
 
 @composite @kwdef mutable struct ORRCell
@@ -28,18 +29,20 @@ function halfcellbc(f,u,bnode,data)
     bulkbc(f,u,bnode,data)
     if bnode.region==data.Γ_we
         @unpack R0,β,Δg,iϕ,ihplus,iso4,io2=data
-        μh2o,μ=chemical_potentials!(f,u,data)
-        A=-(4*μ[ihplus]+μ[io2]-2μh2o+Δg)/(R*data.T)
-        r=rrate(R0,β,A)
         f.=0.0
-        f[ihplus]+=4*r
-        f[io2]+=r
-        boundary_dirichlet!(f,u,bnode;species=data.iϕ,region=data.Γ_we,value=data.ϕ_we)
+        if !data.neutralflag
+            boundary_dirichlet!(f,u,bnode;species=data.iϕ,region=data.Γ_we,value=data.ϕ_we)
+        end
+        μh2o,μ=chemical_potentials!(MVector{4,eltype(u)}(undef),u,data)
+        A=(4*μ[ihplus]+μ[io2]-2μh2o+Δg + data.neutralflag*F*(u[iϕ]-data.ϕ_we))/(R*data.T)
+        r=rrate(R0,β,A)
+        f[ihplus]-=4*r
+        f[io2]-=r
     end
 end
 
 
-function main(;n=100,ϕmax=0.4,molarity=0.1,nref=0, kwargs...)
+function main(;n=100,ϕmax=0.2,molarity=0.1,nref=0,neutral=false, kwargs...)
     defaults=(; max_round=3,tol_round=1.0e-9, verbose=true, tol_relative=1.0e-7,tol_mono=1.0e-10)
     kwargs=merge(defaults, kwargs) 
     
@@ -51,7 +54,7 @@ function main(;n=100,ϕmax=0.4,molarity=0.1,nref=0, kwargs...)
     grid=simplexgrid(X)
     
     
-    celldata=ORRCell(;nc=3, z=[1,-2,0], κ=fill(0,3), Γ_we=1, Γ_bulk=2)
+    celldata=ORRCell(;nc=3, z=[1,-2,0], κ=fill(0,3), Γ_we=1, Γ_bulk=2,neutralflag=neutral)
 
     @unpack iϕ,ihplus,iso4,io2=celldata
 
@@ -76,7 +79,7 @@ function main(;n=100,ϕmax=0.4,molarity=0.1,nref=0, kwargs...)
         tsol.u[it][iso4,:]/=mol/dm^3
     end
 
-    xmax=2*nm
+    xmax=20*nm
     xlimits=[0,xmax]
     aspect=[2*xmax/ϕmax]
     scalarplot!(vis[1,1],currs,volts,markershape=:none,title="IV",xlabel="I",ylabel="V")

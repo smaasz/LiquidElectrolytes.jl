@@ -88,17 +88,30 @@ function charge(u,data)
 end
 
 """
-Calculate c0 and \bar c
-from using the incompressibility constraint
+	vrel(ic,electrolyte)
+
+``v_{i,rel}=κ_i+\\frac{v_i}{v_0}``
+"""
+vrel(ic,electrolyte)=electrolyte.v[ic]/electrolyte.v0+electrolyte.κ[ic]
+
+
+"""
+	c0_barc(u,electrolyte)
+
+Calculate ``c_0`` and ``\\bar c``
+from using the incompressibility constraint (assuming ``κ_0=0``):
 ```math
- \\sum_{i=0}^N c_i v_i =1
+ \\sum_{i=0}^N c_i (v_i + κ_iv_0) =1
 ```
 
 This gives
 
 ```math
- c_0v_0=1-\\sum_{i=1}^N c_i v_i
- c_0= 1/v_0 - \\sum_{i=1}^N c_iv_i/v0
+ c_0v_0=1-\\sum_{i=1}^N c_i (v_i+ κ_iv_0)
+```
+
+```math
+c_0= 1/v_0 - \\sum_{i=1}^N c_i(\\frac{v_i}{v_0}+κ)
 ```
 
 Then we can calculate 
@@ -106,9 +119,6 @@ Then we can calculate
  \\bar c= \\sum_{i=0}^N c_i
 ```
 """
-
-vrel(ic,electrolyte)=electrolyte.v[ic]/electrolyte.v0+electrolyte.κ[ic]
-    
 function c0_barc(c, electrolyte)
     c0 = one(eltype(c)) / electrolyte.v0
     barc = zero(eltype(c))
@@ -117,15 +127,15 @@ function c0_barc(c, electrolyte)
         c0 -= c[ic] * vrel(ic,electrolyte)
     end
     barc += c0
-    max(1.0e-20,c0), barc
+    max(1.0e-50,c0), barc
+#    c0,barc
 end
-
-xlog(u)= u<1.0e-50 ? -50.0*one(u) : log(u)
-#xlog(u)=  log(u)
 
 c0_barc(u,i,electrolyte) = @views c0_barc(u[:,i], electrolyte)
 
 log_c0_barc(u,i,electrolyte) = @views log.(c0_barc(u, i, electrolyte))
+
+
 
 function c0(U::Array, electrolyte)
     c0 = similar(U[1,:])
@@ -141,9 +151,10 @@ function chemical_potentials!(μ,u,data)
     c0,barc=c0_barc(u,data)
     p=u[data.ip]*data.pscale
     p_ref=0
-    μ0=xlog(c0/barc)*(R*data.T)+data.v0*(p-p_ref)
+    xlog(u)= u < 1.0e-20 ? log(1.0e-20) : log(u)
+    μ0=xlog(c0/barc)*R*data.T+data.v0*(p-p_ref)
     for i=1:data.nc
-        μ[i]=xlog(u[i]/barc)*(R*data.T)+data.v[i]*(p-p_ref)
+        μ[i]=xlog(u[i]/barc)*R*data.T+data.v[i]*(p-p_ref)
     end
     μ0,μ
 end

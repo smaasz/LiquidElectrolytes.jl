@@ -8,18 +8,21 @@ using StaticArrays
 using LinearAlgebra
 using Unitful
 
+function showstruct(io::IO,this)
+    for name in fieldnames(typeof(this))
+        println(io,"$(lpad(name,20)) = $(getfield(this,name))")
+    end
+end
 
 include("units.jl")
 
 @phconstants N_A e R ε_0 k_B
 const F=N_A*e
 const Mol=N_A
-@siunits K  dm m s g nm Pa GPa V K L cm mA mol
-
+@siunits K  dm m s g nm Pa GPa V K L cm mA mol μF
 
 
 export @siunits,@phconstants
-
 
 
 include("electrolyte.jl")
