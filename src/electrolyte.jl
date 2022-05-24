@@ -1,3 +1,8 @@
+"""
+$(TYPEDEF)
+
+Abstract super type for electrolytes
+"""
 abstract type AbstractElectrolyteData end
 
 
@@ -8,7 +13,7 @@ Data for electrolyte.
 
 $(TYPEDFIELDS)
 """
-@composite @Base.kwdef mutable struct ElectrolyteData <: AbstractElectrolyteData
+@with_kw mutable struct ElectrolyteData <: AbstractElectrolyteData
     "Number of charged species."
     nc::Int=2
 
@@ -78,7 +83,13 @@ Base.show(io::IO, this::AbstractElectrolyteData)=showstruct(io,this)
 
 Cdl0(data::AbstractElectrolyteData)=sqrt( 2*(data.ε)*ε_0*F^2*data.c_bulk[1]/(R*data.T));
 
-function charge(u,data)
+
+"""
+    charge(c,electrolyte)
+
+Calculate charge from vector of concentrations
+"""
+function charge(u,electrolyte::AbstractElectrolyteData)
     q=zero(eltype(u))
     for ic=1:data.nc
         q+=u[ic] * data.z[ic]
@@ -86,10 +97,10 @@ function charge(u,data)
     q*F
 end
 
-"""
+@doc raw"""
 	vrel(ic,electrolyte)
 
-``v_{i,rel}=κ_i+\\frac{v_i}{v_0}``
+``v_{i,rel}=κ_i+\frac{v_i}{v_0}``
 """
 vrel(ic,electrolyte)=electrolyte.v[ic]/electrolyte.v0+electrolyte.κ[ic]
 

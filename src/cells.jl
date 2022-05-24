@@ -1,3 +1,64 @@
+function doublelayercap(sys;vrange=-1:0.05:1,δ=1.0e-4,molarity=0.1,solver_kwargs...)
+    ranges=splitz(vrange)
+
+    allprogress=sum(length,ranges)
+    vplus = zeros(0)
+    cdlplus = zeros(0)
+    vminus = zeros(0)
+    cdlminus = zeros(0)
+    data=electrolytedata(sys)
+    data.ϕ_we=0
+    
+    data.c_bulk.=molarity*mol/dm^3
+    
+    iϕ=data.iϕ
+    inival0 = solve(sys,inival=pnpunknowns(sys))
+    inival=copy(inival0)
+    sol=copy(inival0)
+    ϕprogress = 0
+
+    control=VoronoiFVM.SolverControl(max_round=3, tol_round=1.0e-10;solver_kwargs...)
+    @withprogress for range in ranges
+        sol .= inival0
+        for ϕ in range
+            try
+                data.ϕ_we= ϕ
+                inival.=sol
+                solve!(sol, inival, sys; control)
+            catch e
+                @warn "δ=0 ϕ_we=$(data.ϕ_we)"
+                rethrow(e)
+            end
+
+            Q = integrate(sys, sys.physics.reaction, sol)
+            
+            try
+                data.ϕ_we=ϕ+δ
+                inival .= sol
+                solve!(sol, inival, sys; control)
+            catch e
+                @warn "δ=δ ϕ_we=$(data.ϕ_we)"
+                rethrow(e)
+            end
+            Qδ = integrate(sys, sys.physics.reaction, sol)
+            cdl = (Qδ[iϕ] - Q[iϕ]) / δ
+
+            if range[end]>range[1]
+                push!(vplus, ϕ)
+                push!(cdlplus, cdl)
+            else
+                push!(vminus, ϕ)
+                push!(cdlminus, cdl)
+            end
+            ϕprogress +=1
+            @logprogress ϕprogress/allprogress
+        end
+    end
+    vcat(reverse(vminus),vplus),vcat(reverse(cdlminus),cdlplus) 
+end
+
+    
+
 
 
 
@@ -61,67 +122,13 @@ function voltagesweep(sys;ϕmax=0.5,ispec=1,n=100,solver_kwargs...)
 end
 
     
-
-
-function doublelayercap(sys;ϕmax=1,δ=1.0e-4,n=100,molarity=0.1,solver_kwargs...)
-    dϕ=ϕmax/n
-    vplus = zeros(0)
-    cdlplus = zeros(0)
-    vminus = zeros(0)
-    cdlminus = zeros(0)
-    data=electrolytedata(sys)
-    data.ϕ_we=0
-    
-    data.c_bulk.=molarity*mol/dm^3
-    
-    iϕ=data.iϕ
-    inival0 = solve(sys,inival=pnpunknowns(sys))
-    inival=copy(inival0)
-    sol=copy(inival0)
-    ϕprogress = 0.0
-
-    control=VoronoiFVM.SolverControl(max_round=3, tol_round=1.0e-10;solver_kwargs...)
-    @withprogress for dir in [1,-1]
-        sol .= inival0
-        ϕ = 0.0
-        while ϕ <= ϕmax
-
-            try
-                data.ϕ_we=dir * ϕ
-                inival.=sol
-                solve!(sol, inival, sys; control)
-            catch e
-                @warn "δ=0 ϕ_we=$(data.ϕ_we)"
-                rethrow(e)
-            end
-
-            Q = integrate(sys, sys.physics.reaction, sol)
-            
-            try
-                data.ϕ_we=dir * ϕ+δ
-                inival .= sol
-                solve!(sol, inival, sys; control)
-            catch e
-                @warn "δ=δ ϕ_we=$(data.ϕ_we)"
-                rethrow(e)
-            end
-            Qδ = integrate(sys, sys.physics.reaction, sol)
-            cdl = (Qδ[iϕ] - Q[iϕ]) / δ
-
-            if dir == 1
-                push!(vplus, dir * ϕ)
-                push!(cdlplus, cdl)
-            else
-                push!(vminus, dir * ϕ)
-                push!(cdlminus, cdl)
-            end
-            ϕ += dϕ
-            ϕprogress +=dϕ
-            @logprogress ϕprogress/(2ϕmax)
-        end
+function splitz(range)
+    if range[1]>=0
+        return [0:step(range):range[end]]
+    elseif range[end]<=0
+        return [0.0:-step(range):range[1]]
+    else
+        [0:-step(range):range[1],0:step(range):range[end]]
     end
-    vcat(reverse(vminus),vplus),vcat(reverse(cdlminus),cdlplus) 
 end
-
-    
 

@@ -3,6 +3,21 @@ import PhysicalConstants
 
 SI(x)=Float64(Unitful.ustrip(Unitful.upreferred(1*x)));
 
+
+
+"""
+    @si_str
+
+Return the numerical value of physical unit measured in SI basis units.
+
+### Example:
+```jldoctest
+si"1mV"
+# output
+
+0.001
+```
+"""
 macro  si_str(x)
     Unitful=getproperty(@__MODULE__,:Unitful)
     quote
@@ -19,6 +34,21 @@ function _siunits(xs...)
     code
 end
 
+"""
+    @siunits
+
+Declare multiplicators for SI base units as global constant
+
+
+### Example:
+```jldoctest
+@siunits mm cm km
+3cm
+# output
+
+0.03
+```
+"""
 macro siunits(xs...)
     esc(_siunits(xs...))
 end
@@ -34,6 +64,20 @@ function _phconstants(xs...)
     code
 end
 
+"""
+    @phconstants
+
+Declare numerical values of physical constants in SI base units as global constant
+
+### Example:
+```jldoctest
+@phconstants AvogadroConstant
+AvogadroConstant
+# output
+
+6.02214076e23
+```
+"""
 macro phconstants(xs...)
     esc(_phconstants(xs...))
 end

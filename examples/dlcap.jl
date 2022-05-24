@@ -22,7 +22,7 @@ function bcondition(f,u,bnode,data)
 end
 
 
-function main(;n=100,ϕmax=1.0,nref=0,scheme=:μex,kwargs...)
+function main(;vrange=(-1:0.1:1),nref=0,scheme=:μex,kwargs...)
     hmin=1.0e-1*nm*2.0^(-nref)
     hmax=1.0*nm*2.0^(-nref)
     L=20.0*nm
@@ -40,7 +40,7 @@ function main(;n=100,ϕmax=1.0,nref=0,scheme=:μex,kwargs...)
     hmol=1/length(molarities)
     for imol=1:length(molarities)
 	c=RGB(1-imol*hmol,0,imol*hmol)
-	t=@elapsed volts,caps=doublelayercap(cell;ϕmax,n,molarity=molarities[imol],kwargs...)
+	t=@elapsed volts,caps=doublelayercap(cell;vrange,molarity=molarities[imol],kwargs...)
 	cdl0=Cdl0(cell.physics.data)
 	scalarplot!(vis,volts,caps/(μF/cm^2),
 		    color=c,clear=false,label="$(molarities[imol])M",markershape=:none)

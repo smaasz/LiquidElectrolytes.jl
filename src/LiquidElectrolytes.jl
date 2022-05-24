@@ -1,7 +1,6 @@
 module LiquidElectrolytes
 using VoronoiFVM,ExtendableGrids
 using DocStringExtensions
-using CompositeStructs
 using Parameters
 using ProgressLogging
 using StaticArrays
@@ -22,7 +21,7 @@ const Mol=N_A
 @siunits K  dm m s g nm Pa GPa V K L cm mA mol μF
 
 
-export @siunits,@phconstants
+export @siunits,@phconstants,@si_str
 
 
 include("electrolyte.jl")
