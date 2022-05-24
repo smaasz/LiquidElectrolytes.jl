@@ -13,7 +13,7 @@ const F=N_A*e
 @siunits nm cm μF mol dm s mA A
 
 
-@composite @kwdef mutable struct FE23Cell
+@composite @kwdef mutable struct FE23Cell <: AbstractElectrolyteData
     ElectrolyteData...
     Γ_we::Int=1
     ϕ_we::Float64=0.0
@@ -26,7 +26,7 @@ const F=N_A*e
     iso4::Int=4
 end
 
-Base.show(io::IO, this::FE23Cell)=showstruct(io,this)
+
 
 
 function halfcellbc(f,u,bnode,data)
@@ -45,7 +45,7 @@ function halfcellbc(f,u,bnode,data)
 end
 
 
-function main(;nref=0,compare=false,neutral=false,n=100,ϕmax=0.2, dlcap=false,R0=1.0e-6,kwargs...)
+function main(;nref=0,compare=false,neutral=false,n=100,ϕmax=0.2, dlcap=false,R0=1.0e-6,logreg=1.0e-18,scheme=:μex,kwargs...)
     defaults=(; max_round=3,
               tol_round=1.0e-9,
               verbose=false,
@@ -60,7 +60,7 @@ function main(;nref=0,compare=false,neutral=false,n=100,ϕmax=0.2, dlcap=false,R
     
     grid=simplexgrid(X)
 
-    celldata=FE23Cell(;nc=4, z=[1,2,3,-2], neutralflag=neutral,κ=fill(0,4), Γ_we=1, Γ_bulk=2, R0=R0*mol/(cm^2*s))
+    celldata=FE23Cell(;nc=4, z=[1,2,3,-2], neutralflag=neutral,κ=fill(0,4), Γ_we=1, Γ_bulk=2, R0=R0*mol/(cm^2*s),scheme,logreg)
 
     @unpack iϕ,ihplus,ife2,ife3,iso4, ip=celldata
     sc=1
@@ -76,7 +76,7 @@ function main(;nref=0,compare=false,neutral=false,n=100,ϕmax=0.2, dlcap=false,R
     cell=PNPSystem(grid;bcondition=halfcellbc,celldata)
 
     if compare
-        celldata.neutralflag=true
+        celldata.neutralflag=false
         volts,currs, sols=voltagesweep(cell;ϕmax,n,ispec=ife2,kwargs...)
         
         tsol=VoronoiFVM.TransientSolution(sols,volts)
@@ -86,7 +86,7 @@ function main(;nref=0,compare=false,neutral=false,n=100,ϕmax=0.2, dlcap=false,R
             tsol.u[it][ife3,:]/=mol/dm^3
         end
         
-        celldata.neutralflag=false
+        celldata.neutralflag=true
         nvolts,ncurrs, sols=voltagesweep(cell;ϕmax,n,ispec=ife2,kwargs...)
         
         ntsol=VoronoiFVM.TransientSolution(sols,volts)
@@ -125,7 +125,7 @@ function main(;nref=0,compare=false,neutral=false,n=100,ϕmax=0.2, dlcap=false,R
     @show extrema(tsol[ife3,end,:])
     if true
         xmax=0.25*nm
-        xmax=L
+#        xmax=L
         xlimits=[0,xmax]
         vis=GridVisualizer(resolution=(1200,400),layout=(1,5),Plotter=PyPlot,clear=true)
         aspect=[2*xmax/(ϕmax)]

@@ -22,14 +22,14 @@ function bcondition(f,u,bnode,data)
 end
 
 
-function main(;n=100,ϕmax=1.0,nref=0,kwargs...)
+function main(;n=100,ϕmax=1.0,nref=0,scheme=:μex,kwargs...)
     hmin=1.0e-1*nm*2.0^(-nref)
     hmax=1.0*nm*2.0^(-nref)
     L=20.0*nm
     X=geomspace(0,L,hmin,hmax)
 
     grid=simplexgrid(X)
-    celldata=HalfCellData(Γ_we=1, Γ_bulk=2)
+    celldata=HalfCellData(Γ_we=1, Γ_bulk=2,scheme=scheme)
     @show ldebye(celldata)
     cell=PNPSystem(grid;bcondition,celldata)
     check_allocs!(cell,false)

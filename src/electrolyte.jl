@@ -66,12 +66,11 @@ $(TYPEDFIELDS)
     "Electroneutrality switch"
     neutralflag::Bool=false
 
-end
+    "Electroneutrality switch"
+    scheme::Symbol=:μex
 
-function showstruct(io::IO,this)
-    for name in fieldnames(typeof(this))
-        println(io,"$(lpad(name,20)) = $(getfield(this,name))")
-    end
+    "Logarithm regularization"
+    logreg::Float64=1.0e-18
 end
 
 Base.show(io::IO, this::AbstractElectrolyteData)=showstruct(io,this)
@@ -133,9 +132,11 @@ end
 
 c0_barc(u,i,electrolyte) = @views c0_barc(u[:,i], electrolyte)
 
-log_c0_barc(u,i,electrolyte) = @views log.(c0_barc(u, i, electrolyte))
+log_c0_barc(u,i,electrolyte) = @views rlog.(c0_barc(u, i, electrolyte),electrolyte)
 
 
+
+rlog(u,electrolyte)= log(u+electrolyte.logreg)
 
 function c0(U::Array, electrolyte)
     c0 = similar(U[1,:])
@@ -143,7 +144,7 @@ function c0(U::Array, electrolyte)
     for ic = 1:electrolyte.nc
         c0 -= U[ic,:] .* vrel(ic,electrolyte)
     end
-    max(c0,0.0)
+    max(c0,1.0e-50)
 end
 
 
@@ -151,10 +152,9 @@ function chemical_potentials!(μ,u,data)
     c0,barc=c0_barc(u,data)
     p=u[data.ip]*data.pscale
     p_ref=0
-    xlog(u)= u < 1.0e-20 ? log(1.0e-20) : log(u)
-    μ0=xlog(c0/barc)*R*data.T+data.v0*(p-p_ref)
+    μ0=rlog(c0/barc,data)*R*data.T+data.v0*(p-p_ref)
     for i=1:data.nc
-        μ[i]=xlog(u[i]/barc)*R*data.T+data.v[i]*(p-p_ref)
+        μ[i]=rlog(u[i]/barc,data)*R*data.T+data.v[i]*(p-p_ref)
     end
     μ0,μ
 end

@@ -33,6 +33,27 @@ function bulkbc(f,u,bnode,data)
     end
 end
 
+function sflux(ic,dϕ,ck,cl,γk,γl,bar_ck,bar_cl,electrolyte)
+    μk=rlog(γk,electrolyte)*(R*electrolyte.T)
+    μl=rlog(γl,electrolyte)*(R*electrolyte.T)
+    bp, bm = fbernoulli_pm(electrolyte.Z[ic] * dϕ  + (μk - μl)   /(R*electrolyte.T))
+    electrolyte.D[ic] * (bm*ck - bp*cl)
+end
+
+function aflux(ic,dϕ,ck,cl,γk,γl,bar_ck,bar_cl,electrolyte)
+    bp, bm = fbernoulli_pm(electrolyte.Z[ic] * dϕ)
+    electrolyte.D[ic] * (bm*ck*γk - bp*cl*γl)*2.0/(γk+γl)
+end
+
+function cflux(ic,dϕ,ck,cl,γk,γl,bar_ck,bar_cl,electrolyte)
+    μk=rlog(γk,electrolyte)*(R*electrolyte.T)
+    μl=rlog(γl,electrolyte)*(R*electrolyte.T)
+    
+    hk = rlog(ck/bar_ck,electrolyte)*(R*electrolyte.T) + μk
+    hl = rlog(cl/bar_cl,electrolyte)*(R*electrolyte.T) + μl
+    
+    electrolyte.D[ic] * 0.5 * (ck + cl) * (hk - hl + electrolyte.z[ic]*F*dϕ)/(R*electrolyte.T)
+end
 
 
 """
@@ -40,144 +61,53 @@ end
 
  Appearantly first described by Yu, Zhiping  and Dutton, Robert, SEDAN III, www-tcad.stanford.edu/tcad/programs/sedan3.html
 
- see also the 198? Fortran code available via http://www-tcad.stanford.edu/tcad/programs/oldftpable.html
+ see also the 198? Fortran code available via
+  https://web.archive.org/web/20210518233152/http://www-tcad.stanford.edu/tcad/programs/oldftpable.html
 
 Verification calculation is in the paper.
 """
 function pnpflux(f, u, edge, electrolyte)
     iϕ = electrolyte.iϕ # index of potential
     ip = electrolyte.ip
-    pk = u[ip,1]
-    pl = u[ip,2]
-    ## Poisson flux
-    dϕ = u[iϕ,1] - u[iϕ,2]
-    f[iϕ]=electrolyte.ε*ε_0*dϕ*!electrolyte.neutralflag
-    dp = pk-pl
-    q1=charge(u,1,electrolyte)
-    q2=charge(u,2,electrolyte)
+
+    pk,pl = u[ip,1],u[ip,2]
+    ϕk,ϕl = u[iϕ,1],u[iϕ,2]
+
+    qk,ql=charge(u,1,electrolyte),charge(u,2,electrolyte)
+
+    c0k,bar_ck=c0_barc(u, 1, electrolyte)
+    c0l,bar_cl=c0_barc(u, 2, electrolyte)
     
-    f[ip]=dp + (q1+q2)*dϕ/(2*electrolyte.pscale)
+    dϕ = ϕk-ϕl
+    dp = pk-pl
 
-    if !iszero(electrolyte.v)
-        # (log_c0k, log_bar_ck) = log_c0_barc(u, 1, electrolyte)
-        # (log_c0l, log_bar_cl) = log_c0_barc(u, 2, electrolyte)
+    f[iϕ]=electrolyte.ε*ε_0*dϕ*!electrolyte.neutralflag
+    f[ip]=dp + (qk+ql)*dϕ/(2*electrolyte.pscale)
 
-
-        c0k,bar_ck=c0_barc(u, 1, electrolyte)
-        c0l,bar_cl=c0_barc(u, 2, electrolyte)
-    end
-
+    γk,γl=1.0,1.0
+    
     for ic = 1:electrolyte.nc
+        ck,cl=u[ic,1],u[ic,2]
         if !iszero(electrolyte.v)
             M=electrolyte.M[ic]/electrolyte.M0
             V=electrolyte.v[ic]+(electrolyte.κ[ic]-M)*electrolyte.v0
-            #            muk = V*pk/(R*electrolyte.T) -M*log_c0k + (M-1.0)*log_bar_ck
-            #            mul = V*pl/(R*electrolyte.T) -M*log_c0l + (M-1.0)*log_bar_cl
-            
-            muk = V*pk +log(bar_ck^(M-1.0)/(c0k^M))*(R*electrolyte.T)
-            mul = V*pl +log(bar_cl^(M-1.0)/(c0l^M))*(R*electrolyte.T)
-        else
-            muk=0.0
-            mul=0.0
+            γk = exp(V*pk/(R*electrolyte.T))*bar_ck^(M-1.0)/(c0k^M)
+            γl = exp(V*pl/(R*electrolyte.T))*bar_cl^(M-1.0)/(c0l^M)
         end
         
-        ## Combine potential gradient and excess chemical gradient
-        arg = electrolyte.Z[ic] * (u[iϕ,1] - u[iϕ,2])  + (muk - mul)   /(R*electrolyte.T)
-
-        ## Call Bernoulli function
-        bp, bm = fbernoulli_pm(arg)
-
-        ## Calculate drift-diffusion flux
-        f[ic] = electrolyte.D[ic] * (bm * u[ic,1] - bp * u[ic,2])
-    end
-end 
-
-
-"""
-Averaging of reciprocal activity coefficients
-
-"""
-function pnpaflux(f, u, edge, electrolyte)
-    iϕ = electrolyte.iϕ # index of potential
-    ip = electrolyte.ip
-    pk = u[ip,1]
-    pl = u[ip,2]
-    ## Poisson flux
-    dϕ = u[iϕ,1] - u[iϕ,2]
-    f[iϕ]=electrolyte.ε*ε_0*dϕ*!electrolyte.neutralflag
-    dp = pk-pl
-    q1=charge(u,1,electrolyte)
-    q2=charge(u,2,electrolyte)
-    
-    f[ip]=dp + (q1+q2)*dϕ/(2*electrolyte.pscale)
-
-    if !iszero(electrolyte.v)
-        c0k,bar_ck=c0_barc(u, 1, electrolyte)
-        c0l,bar_cl=c0_barc(u, 2, electrolyte)
-    end
-    
-    for ic = 1:electrolyte.nc
-        if !iszero(electrolyte.v)
-            M=electrolyte.M[ic]/electrolyte.M0
-            V=electrolyte.v[ic]+(electrolyte.κ[ic]-M)*electrolyte.v0
-            γk=exp(V*pk/(R*electrolyte.T))*bar_ck^(M-1.0)/(c0k^M) 
-            γl=exp(V*pl/(R*electrolyte.T))*bar_cl^(M-1.0)/(c0l^M) 
+        if electrolyte.scheme==:μex
+            f[ic]=sflux(ic,dϕ,ck,cl,γk,γl,bar_ck, bar_cl,electrolyte)
+        elseif electrolyte.scheme==:act
+            f[ic]=aflux(ic,dϕ,ck,cl,γk,γl,bar_ck, bar_cl,electrolyte)
+        elseif  electrolyte.scheme==:cent
+            f[ic]=cflux(ic,dϕ,ck,cl,γk,γl,bar_ck, bar_cl,electrolyte)
         else
-            γk=1.0
-            γl=1.0
+            error("no such scheme: $(electrolyte.scheme)")
         end
-
-        ## Combine potential gradient and excess chemical gradient
-        arg = electrolyte.Z[ic] * (u[iϕ,1] - u[iϕ,2])
-
-        ## Call Bernoulli function
-        bp, bm = fbernoulli_pm(arg)
-
-        ## Calculate drift-diffusion flux
-        f[ic] = electrolyte.D[ic] * (bm * u[ic,1]*γk - bp * u[ic,2]*γl)*2.0/(γk+γl)
     end
 end 
 
-function pnpcflux(f, u, edge, electrolyte)
-    iϕ = electrolyte.iϕ # index of potential
-    ip = electrolyte.ip
-    pk = u[ip,1]
-    pl = u[ip,2]
-    ## Poisson flux
-    dϕ = u[iϕ,1] - u[iϕ,2]
-    f[iϕ]=electrolyte.ε*ε_0*dϕ*!electrolyte.neutralflag
-    dp = pk-pl
-    q1=charge(u,1,electrolyte)
-    q2=charge(u,2,electrolyte)
-    
-    f[ip]=dp + (q1+q2)*dϕ/(2*electrolyte.pscale)
 
-    if !iszero(electrolyte.v)
-        c0k,bar_ck=c0_barc(u, 1, electrolyte)
-        c0l,bar_cl=c0_barc(u, 2, electrolyte)
-    end
-    
-    for ic = 1:electrolyte.nc
-        ck = u[ic,1]
-        cl = u[ic,2]
-        if !iszero(electrolyte.v)
-            M=electrolyte.M[ic]/electrolyte.M0
-            V=electrolyte.v[ic]+(electrolyte.κ[ic]-M)*electrolyte.v0
-            muk = V*pk +log(bar_ck^(M-1.0)/(c0k^M))*(R*electrolyte.T)
-            mul = V*pl +log(bar_cl^(M-1.0)/(c0l^M))*(R*electrolyte.T)
-        else
-            muk=0.0
-            mul=0.0
-        end
-        xlog(u)= u < 1.0e-20 ? log(1.0e-20) : log(u)
-
-        hk = xlog(ck/bar_ck)*(R*electrolyte.T) - muk
-        hl = xlog(cl/bar_cl)*(R*electrolyte.T) - mul
-
-        f[ic] = electrolyte.D[ic] * 0.5 * (ck + cl) * (hk - hl + electrolyte.Z[ic] *(u[iϕ,1] - u[iϕ,2]))/(R*electrolyte.T)
-    end
-    @show value(f[1])
-end 
 
 
 
