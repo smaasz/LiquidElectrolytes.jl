@@ -1,0 +1,399 @@
+\RequirePackage[l2tabu, orthodox,abort]{nag}
+
+\InputIfFileExists{jfsettings}{}{
+\documentclass[12pt,oneside,reqno]{amsart}
+\usepackage[a4paper,portrait,left=1.5cm,outer=3.5cm,headheight=15pt,bottom=3cm,top=3cm]{geometry} 
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%&
+% Draft settings
+\usepackage{xcolor}
+\usepackage[color]{showkeys}
+\definecolor{refkey}{rgb}{0.3,0.5,0.3}
+\definecolor{labelkey}{rgb}{0.3,0.5,0.3}
+\definecolor{todo}{rgb}{0.6,0.9,0.5}
+\usepackage[textwidth=3cm,textsize=tiny,color=todo]{todonotes}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%  GENERAL SETTINGS
+
+\usepackage{amsmath,amssymb,amsfonts,amsthm} % ams stuff everywhere
+\usepackage{array}                 % math in tabular etc.
+\usepackage{booktabs}              % improve table rendering
+\usepackage[utf8]{inputenc}        % UTF8 fonts
+\usepackage[T1]{fontenc}           % Fix font encoding issues with accented chars
+\usepackage[english]{babel}        % Language awareness
+\usepackage{csquotes}              % Context sensitive qouting
+\usepackage{enumitem}              % no dull items
+\usepackage{tikz}
+\usepackage{verbatim}
+\usepackage{graphicx}
+\usepackage{fouriernc}
+\usepackage[amssymb,thickspace,thinqspace]{SIunits}
+
+\graphicspath{ {./} {./pic/}}
+\numberwithin{equation}{section}
+
+
+
+
+\title[Verification of Butler-Volmer derivation]{Numerical verification of the derivation of the Butler-Volmer equation from
+the Nernst-Planck equations\\ Draft}
+\author{$\dots$}
+\date{\today}
+
+
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+
+The authors of \cite{dreyer2016new} provides a thermodynamically and  mathematically motivated  derivation of
+Butler-Volmer - like  equations assuming that 
+\begin{itemize}
+\item all reactions take place at the interface between the electrolyte
+and the metal (interface I)
+\item in a boundary layer defined by the plane of zero charge, short relaxation
+  times allow the assumption that the electrochemical potential of the dissolved species
+  is constant
+\end{itemize}
+A similar analysis already was performed in \cite{rubinstein1990electro}, albeit without the
+connection to the Butler-Volmer equation.
+
+This paper attempts to provide  an assessment of this derivation using
+numerical    computations   based    on   Nernst-Planck-Poisson    and
+Nernst-Planck-Ohm systems.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Electrolyte models}
+
+In this  section, we  introduce three  electrolyte models  and discuss
+their boundary conditions and their interconnections. For the notations,
+see table \ref{tab:notations}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Nernst-Planck-Poisson  with  volume constraints} 
+
+\begin{subequations}\label{sys:PNP}
+\begin{align}
+  -\nabla \varepsilon \nabla \phi&= F\sum_{i=1}^N z_i c_i\\
+  \partial c_i  + \nabla \cdot \mathbf N_i  &=0 & (i=1\dots N)\\
+  \mathbf N_i &= - \frac{D_i}{RT} c_i \left( \nabla \mu_i - \frac{M_i}{M_0}\nabla \mu_0 + z_i F \nabla \phi \right) \label{eq:NP}
+\end{align}
+From the momentum balance at zero velocity, the pressure $p$ obeys the relationship $\nabla p = q \nabla \phi$
+which can be replaced by
+\begin{align}
+  -\Delta p + \nabla \cdot q \nabla \phi \label{eq:press}
+\end{align}
+The system is closed by the compressibility condition
+\begin{align}
+  \sum_{i=0}^N v_ic_i&=1
+\end{align}
+and the relationship between chemical potentials and concentrations \cite{dreyer2013overcoming} :
+\begin{align}\label{eq:constrel}
+  \mu_i &= \mu_i^\circ + v_i(p-p^\circ) + RT \ln \frac{c_i}{\bar c}  & (i=0\dots N)
+\end{align}
+where $  \bar c = \sum_{i=0}^N  c_i$.
+\end{subequations}
+
+
+
+For the derivation of the numerical scheme we calculate the non-constant
+contribution to the excess chemical potential:
+For $i=1\dots N$ we have
+\begin{align}
+  \mu_i^{ex} &=  \mu_i - \frac{M_i}{M_0} \mu_0  - RT \log c_i \nonumber\\
+             &= v_ip + RT \log c_i - RT\log\bar c -\frac{M_i}{M_0}\left(  v_0p + RT \log c_0 - RT\log\bar c\right)  - RT \log c_i\nonumber\\
+            &= v_ip - RT\log\bar c -\frac{M_i}{M_0}\left(  v_0p + RT \log c_0 - RT\log\bar c\right)\nonumber\\
+            &= \left(v_i-\frac{M_i}{M_0}v_0\right)p - \frac{M_i}{M_0}RT\log c_0 +  \left(\frac{M_i}{M_0}-1\right)RT\log \bar c \label{eq:muex}
+\end{align}
+and express $c_0$ and $\bar c$ in terms of $c_1\dots c_N$
+\begin{align*}
+  c_0&=\frac{1}{v_0} -  \sum_{i=1}^N  \frac{v_i}{v_0}c_i\\
+  \bar c &% = \frac{1}{v_0} -  \sum_{i=1}^N \frac{v_i}{v_0}c_i + \sum_{i=1}^N  c_i
+          = \frac{1}{v_0} + \sum_{i=1}^N \left(1- \frac{v_i}{v_0}\right) c_i 
+\end{align*}
+
+Thus, we can rewrite \eqref{eq:NP}  as 
+\begin{align}
+  \mathbf N_i &= - D_i\nabla\left( c_i + \frac{1}{RT} (\mu_i^{ex} + z_i F \nabla \phi) \right)
+\end{align}
+where the expression \eqref{eq:muex} for $\mu_i^{ex}(c_1\dots c_N, p)$  encodes the non-ideality properties of the mixture.
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Domain, boundary an initial conditions} 
+\subsubsection{Full cell}
+Assume a one-dimensional domain  $\Omega=(0,L)$, filled with
+the   electrolyte,   and   with   electrodes   of   similar   reactive
+characteristics  at  $x=0$  and   $x=L$.  Applying  an  electrostatic
+potential difference $U=U_{0}-U_{L}$ to the system leads to Dirichlet boundary conditions
+for the electrostatic potential:
+\begin{subequations}\label{sys:PNPbc}
+\begin{align}
+  \phi|_{x=0}=U_{0}, &\quad \phi|_{x=L}=U_{L}
+\end{align}
+For the constituents of the electrolyte, we assume surface reactions which do not
+involve neither the  solvent, nor the metal:
+\begin{align}
+  (N_i\cdot \mathbf n)|_{x=0}&=R_i(\mu_1^0\dots\mu_n^0), & (i=1\dots N)\\
+  (N_i\cdot \mathbf n)|_{x=L} &=R_i(\mu_1^L\dots\mu_n^L) & (i=1\dots N).
+\end{align}
+Particular expressions will be discussed later. In addition to the chemical potentials
+of the dissolved species, $R_i$ depend on the electron concentration in the metal
+which is assumed to be constant and thus can be hidden in the constants describing $R_i$.
+Assuming that surface and bulk chemical potentials are equal leads to the equivalences
+\begin{align*}
+  \mu_i^0=\mu_i(0), &\quad \mu_i^L=\mu_i(L) & (i=1\dots N).
+\end{align*}
+
+In order to fix the integration constant of the pressure, we set
+\begin{align}
+  p(L/2)=0
+\end{align}
+\end{subequations}
+
+As initial conditions, we set  $c_i|_{t=0}=c_i^{bulk}$ ($i=1\dots N$) such that it fulfills
+local electroneutrality $\sum_{i=1}^N z_ic_i^{bulk}=0$ and $c_0^{bulk}>0$.
+
+\subsubsection{Half cell}
+Here, we set bulk boundary conditions at $L=0$:
+\begin{subequations}
+  \begin{align}
+    \phi|_{x=L}&=0\\
+    c_i|_{x=L}&= c_i^{bulk}\\
+    p|_{x=L}&=0
+  \end{align}
+\end{subequations}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Nernst-Planck-Poisson   system    with   electroneutrality constraint} 
+For  large  domains, the  width  of  the polarization  boundary  layer
+inherent to  the NPP-System is  negligible, it makes sense  to replace
+the Poisson equation with the local electroneutrality constraint:
+\begin{align}
+  0&= \sum_{i=1}^N z_i c_i \label{eq:eneu}
+\end{align}
+This condition can be enforced just by setting  $\varepsilon=0$
+As we replaced the Poisson equation by an algebraic condition, we need to remove 
+the Dirichlet boundary conditions for the electrostatic potential from the system.
+
+But we still keep the reaction boundary conditions:
+\begin{subequations}\label{sys:NNPbc}
+\begin{align}\
+  (N_i\cdot \mathbf n)|_{x=0}&=R_i(\mu_1^0\dots\mu_n^0), & (i=1\dots N)\\
+  (N_i\cdot \mathbf n)|_{x=L} &=R_i(\mu_1^L\dots\mu_n^L) & (i=1\dots N).
+\end{align}
+\end{subequations}
+
+In \cite{guhlke2015theorie}, based on an approach introduced in \cite{caginalp1988dynamics}, the method
+of matching asymptotic expansions has been used in order to derive boundary conditions for
+this case. As a main conclusion, the assumption of local equilibrium 
+in the polarization boundary layer is valid and 
+the electrochemical potentials $\mu_i + z_i F \phi$ are constant in this boundary layer. Assuming that the electrostatic
+potential at the metal side of the electrode at $x=0$ still assumes the applied potential value $U_0$, the
+potential difference over the polarization boundary layer can be expressed as $\phi(0)-U_0$. A
+similar consideration is true for $x=L$.
+Now one can 
+calculate the chemical potentials at the surface entering \eqref{sys:NNPbc} as
+\begin{subequations}\label{sys:neubc}
+   \begin{align}
+     \mu_i^0=\mu_i(0) + z_i F(\phi(0)-U_0)\\
+     \mu_i^L=\mu_i(L) + z_i F(\phi(L)-U_L)
+   \end{align}
+ \end{subequations}
+
+ The pressure equation \eqref{eq:press} has a zero right hand side leading to a
+ constant value of the pressure with the boundary conditions involved.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Nernst-Planck-Ohm system}
+
+We assume that species number $1$ belongs to the background electrolyte which
+is inert to  the reactiom, such that $R_1=0$. Further, we assume that 
+the dilute solution assumption is valid, in particular, $c_0\approx\bar c\approx \mathrm{const}$.
+With constant pressure, this leads to $\mu_i^{ex}=0$ resulting in 
+the classical drift-diffusion expression
+\begin{align}
+  \mathbf N_i &= -D_i \nabla c_i  - z_i \frac{F}{RT} D_i c_i \nabla \phi \label{eq:ddflux} & (i=1\dots N)
+\end{align}
+
+The algebraic condition \ref{eq:eneu} allows to express the species density $c_1$ 
+via the other densities:
+\begin{align}
+  c_1=-\sum_{i=2}^N \frac{z_i}{z_1} c_i
+\end{align}
+Furthermore, summing up all dissolved species flux equations weighted by $Fz_i$ leads to Ohm's law
+coupled to the transport equations for the species $i=2\dots N$. Under the condition that all
+diffusion coefficients are equal, $D_i=D$, one arrives at
+\begin{subequations}\label{sys:ONP}
+\begin{align}
+  -\nabla\cdot (\sigma\nabla\phi) &= 0\\
+  \partial c_i  + \nabla \cdot \mathbf N_i  &=0 & (i=2\dots N)\\
+  \mathbf N_i &= -D \nabla c_i  - z_i \frac{F}{RT}  D c_i \nabla \phi \label{eq:xddflux} & (i=2\dots N)
+\end{align}
+\end{subequations}
+with the boundary conditions
+\begin{subequations}\label{ONPbc}
+\begin{align}
+  -\sigma\nabla\phi \cdot \mathbf n|_{x=0} &= \sum_{i=2}^N Fz_iR_i(\mu_2^0\dots\mu_n^0)\\
+  (N_i\cdot \mathbf n)|_{x=0}&=R_i(\mu_2^0\dots\mu_n^0), & (i=2\dots N)\\
+  -\sigma\nabla\phi \cdot \mathbf n|_{x=L} &= \sum_{i=2}^N Fz_iR_i(\mu_2^L\dots\mu_n^L)\\
+  (N_i\cdot \mathbf n)|_{x=L} &=R_i(\mu_2^L\dots\mu_n^L) & (i=2\dots N)
+\end{align}
+\end{subequations}
+The surface species concetration is calculated via \eqref{eq:constrel} (with constant $\bar c$) and
+  \eqref{sys:neubc}.
+The  conductivity $\sigma$ is expressed via the species concentrations as
+\begin{align}
+  \sigma= \frac{DF^2}{RT}\sum_{i=1}^N z_i^2 c_i
+\end{align}
+For a sufficiently high concentration of conducting salt, one can assume that this value
+is a constant given by 
+\begin{align}
+  \sigma= \frac{DF^2}{RT}\sum_{i=1}^N z_i^2 c_i^{\text{bulk}}.
+\end{align}
+
+\subsection{Surface reaction terms}
+We assume equality of surface and bulk chemical potentials, and that the only species on the metal
+side are electrons which are given index $-1$.
+Let $A_0\dots A_N$ be the reacting species. Then we can write a (surface) reaction $R_k$ as
+\begin{align}
+  \sum_{i=-1}^N a_{k,i} A_i
+  \begin{array}{c}
+     R_k^+\\
+    \leftrightharpoons \\
+     R_k^-\\
+  \end{array}
+  \sum_{i=-1}^N b_{k,i} A_i
+\end{align}
+Mass and charge conservation yield for $k=1\dots K$:
+\begin{align}
+  \sum_{i=-1}^N m_i s_{k,i}&=0\\
+  \sum_{i=-1}^N z_i s_{k,i}&=0
+\end{align}
+where $s_{k,i}=b_{k,i}-a_{k,i}$.
+Thus, with $z_0=-1$ and $n=s_{k,-1}$ is the number of electrons
+transferred per reaction, we have
+\begin{align}
+  \sum_{i=0}^N z_i s_{k,i}&=s_{k,-1}=n
+\end{align}
+With the affinity
+\begin{align}
+  \mathcal A_k = \frac{1}{RT}\sum_{i=-1}^Ns_{k,i}\mu_i
+\end{align}
+one writes the rate expression as
+\begin{align}
+  R_k(\mu_0\dots\mu_N)= R_{k,0}\left(\exp(-\beta_k\mathcal A_k) - \exp((1-\beta_k)\mathcal A_k)\right)
+\end{align}
+In the electroneutral case, one writes due to the equilibrium conditions in the boundary layer:
+\begin{align}
+  \mathcal A_k &= \frac{1}{RT}\left(\sum_{i=-1}^Ns_{k,i}\mu_i + \sum_{i=0}^Ns_{k,i}z_iF(\phi -U)\right)\\
+               &= \frac{1}{RT}\left(s_{-1,i}\mu_{-1}+ \sum_{i=0}^Ns_{k,i}\mu_i + nF(\phi -U)\right)\\
+               &= \frac{1}{RT}\left(\Delta g+ \sum_{i=0}^Ns_{k,i}\mu_i + nF(\phi -U)\right)\\
+\end{align}
+
+Assuming bulk ideality, we  have $\mu_i=\frac1{RT}\log c_i$, thus with $\beta=\frac12$,
+\begin{align}
+  R_k&= R_{k,0}\left(\exp(-\frac12\mathcal A_k) - \exp(\frac12\mathcal A_k)\right)\\
+     &= R_{k,0}\left(\exp(-\frac{\Delta g}{2RT})\prod_{i=1}^nc_i^{\frac{s_i}{2}}\right)\dots
+\end{align}
+
+
+
+
+\section{Specific reactions}
+\subsection{Ferric-ferrous}
+In this section, possible models for reaction boundary
+conditions  are  discussed. Their  performance for  the  three  possible
+systems \eqref{sys:PNP},\eqref{sys:NNP}, and \eqref{sys:ONP} will be compared based
+on numerical simulations.
+
+For this demonstration, a further specialization of the example is performed.
+Assume an aqeuous solution, $N=4$, and the species $H^+$ $(c_1)$, $Fe^{2+}$ $(c_2)$,  $Fe^{3+}$ $(c_3)$,
+$SO_4^{2-}$ $(c_4)$. The redox reaction is
+\begin{align}\label{eq:redox}
+     Fe^{3+} + e^- &\rightleftharpoons Fe^{2+}
+\end{align}
+We set $R_1=0$, $R_2=R(\mu_2,\mu_3)$, $R_3=-R(\mu_2,\mu_3)$, $R_4=0$.
+For  all examples, a series of stationary solutions for different
+applied potentials is calculated add plotted.
+
+We  assume  bulk  concentratiosn of  $c_1^\text{bulk}=1  mol/dm^3$  of
+$H^+$,        $c_2^\text{bulk}=0.1mol/dm^3$       of        $Fe^{2+}$,
+$c_2^\text{bulk}=0.1mol/dm^3$         of        $Fe^{3+}$,         and
+$c_4^\text{bulk}=0.75mol/dm^3$    of   $SO_4^{2-}$.    All   diffusion
+coefficients   are  equal   to  $2.0\cdot10^{-9}m^2/s$.   Further,  we
+introduce two reaction constants:  $R_0=10^{-6} mol/(cm^2\cdot s)$ and
+$k_0= \frac{\bar c R_0}{\sqrt{c_2^\text{bulk}c_3^\text{bulk}}}$.
+
+
+Ansatz:
+\begin{align}\label{eq:MBV}
+  RT\mathcal A(\mu_{-1}, \mu_1,\mu_2)&=\mu_2-\mu_3-\mu_{-1}
+\end{align}
+Here, $\beta$ is a symmetry factor and $A$ a coefficient which can be used
+``for further modeling''.
+In the electroneutral case, this leads to 
+\begin{align}\label{eq:MBVneu}
+  R(\mu_2,\mu_3,\phi)= R_0\left(\exp\left(-\beta A\frac{\mu_2-\mu_3+zF(\phi-U)}{RT}\right)-\exp\left((1-\beta)A\frac{\mu_2-\mu_3+zF(\phi-U)}{RT}\right)\right).
+\end{align}
+Expressed in concentrations, one yields (setting $A=1$,$\beta=\frac12$)
+\begin{align}
+  R(c_2,c_3,\phi)&= R_0\left( \left(\frac{c_3}{c_2}\right)^{\frac12}\exp\left(-\frac{zF(\phi-U)}{2RT}\right)-\left(\frac{c_2}{c_3}\right)^{\frac12}\exp\left(\frac{zF(\phi-U)}{2RT}\right)\right)\\
+                 &= \frac{\bar cR_0}{(c_2c_3)^{\frac12}}\left(\frac{c_3}{\bar c}\exp\left(-\frac{zF(\phi-U)}{2RT}\right)-\frac{c_2}{\bar c}\exp\left(\frac{zF(\phi-U)}{2RT}\right)\right).
+\label{eq:MBVohm}
+\end{align}
+Replacing $\frac{\bar cR_0}{(c_2c_3)^{\frac12}}$ by $k_0=\frac{\bar cR_0}{(c_2^\text{bulk}c_3^\text{bulk})^{\frac12}}$
+yields a well known form of the Butler-Volmer equation, see also the discussion below in section \ref{sec:BV}.
+
+\subsection{Hydrogen evolution}
+Species: $H^+$ ($c_1$), $H_2$ ($c_2$) $SO_4^{2-}$ ($c_3$)\\
+N=2\\
+Reaction:
+\begin{align}
+  2H^+ + 2e^- \leftrightharpoons  H_2
+\end{align}
+
+\begin{align}
+  RT\mathcal A(\mu_{-1}, \mu_1,\mu_2)&=-2\mu_{-1}-2\mu_1+\mu_2\\
+\end{align}
+
+
+
+\subsection{Oxygen reduction}
+Species: $H^+$ ($c_1$),  $O_2$ ($c_2$), $SO_4^{2-}$ ($c_3$)\\
+N=3\\
+Reaction:
+\begin{align}
+  4H^+ + O_2 + 4e^- \leftrightharpoons  2H_2O
+\end{align}
+
+\begin{align}
+  RT \mathcal A(\mu_{-1}, \mu_0,\mu_1,\mu_2)&=-4\mu_{-1}-4\mu_1-\mu_2+\mu_0
+\end{align}
+
+
+
+\clearpage
+\bibliographystyle{unsrt}
+
+\bibliography{lit}
+
+\appendix
+\section{Notations}
+\begin{table}
+\begin{tabular}{rl}
+  $F$ & Faraday constant\\
+  $R$ & Molar gas constant\\
+  $T$ & Temperature
+\end{tabular}
+  \caption{Notations}
+  \label{tab:notations}
+\end{table}
+
+\end{document}
