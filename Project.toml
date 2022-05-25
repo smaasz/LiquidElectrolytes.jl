@@ -22,3 +22,19 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 VoronoiFVM = "82b139dc-5afc-11e9-35da-9b9bdfd336f3"
+
+[compat]
+CodeTracking v1.0.9
+Colors v0.12.8
+CompositeStructs v0.1.3
+DocStringExtensions v0.8.6
+ExtendableGrids v0.9.6
+GridVisualize v0.5.1
+NLsolve v4.5.1
+Parameters v0.12.3
+PhysicalConstants v0.2.1
+PlutoUI v0.7.39
+ProgressLogging v0.1.4
+StaticArrays v1.4.4
+Unitful v1.11.0
+VoronoiFVM v0.16.3
