@@ -1,22 +1,29 @@
-````@eval
+```@eval
 using Markdown
 Markdown.parse("""
 $(read("../../README.md",String))
 """)
-````
+```
 
 ## Data of Electrolyte
 
 
 ```@docs
-AbstractElectrolyteData
 ElectrolyteData
+AbstractElectrolyteData
+Cdl0(::ElectrolyteData)
+ldebye(::ElectrolyteData)
+chemical_potentials!
+rrate
 ``` 
 
 ### Internal API
 ```@docs
 LiquidElectrolytes.charge
 LiquidElectrolytes.vrel
+LiquidElectrolytes.c0_barc
+LiquidElectrolytes.rlog
+LiquidElectrolytes.wnorm
 ```
 
 ## Physical unit handling

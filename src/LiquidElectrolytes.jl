@@ -26,16 +26,16 @@ export @siunits,@phconstants,@si_str
 
 include("electrolyte.jl")
 export ElectrolyteData, AbstractElectrolyteData
-export Cdl0,c0_barc,chemical_potentials!, rrate,ldebye
-export showstruct
+export Cdl0,chemical_potentials!, rrate,ldebye
+export showstruct, rlog, electrolyte
 
 include("pnpsystem.jl")
 export PNPSystem
-export pnpunknowns,electrolytedata
+export pnpunknowns,electrolytedata,bulkbc
 
 
 include("cells.jl")
-export voltagesweep,doublelayercap,bulkbc
+export voltagesweep,doublelayercap
 
 
 include("equilibrium.jl")

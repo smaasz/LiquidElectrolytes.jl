@@ -1,7 +1,33 @@
-function doublelayercap(sys;vrange=-1:0.05:1,δ=1.0e-4,molarity=0.1,solver_kwargs...)
-    ranges=splitz(vrange)
+function splitz(range::AbstractRange)
+    if range[1]>=0
+        return [range]
+    elseif range[end]<=0
+        return [reverse(range)]
+    else
+        [0:-step(range):range[1],0:step(range):range[end]]
+    end
+end
 
-    allprogress=sum(length,ranges)
+function splitz(range::Vector)
+    if range[1]>=0
+        return [vcat([0.0],range)]
+    elseif range[end]<=0
+        return [vcat([0.0],reverse(range))]
+    else
+        for i=1:length(range)
+            if range[i]≈0.0
+                return [ reverse(range[1:i]), range[i:end]]
+            elseif i>1 && range[i-1]<0.0 && range[i]>0.0
+                return [ vcat([0.0],reverse(range[1:i-1])), vcat([0.0],range[i:end])]
+            end
+        end
+    end
+
+end
+
+function doublelayercap(sys;voltages=-1:0.1:1,δ=1.0e-4,molarity=0.1,solver_kwargs...)
+    ranges=splitz(voltages)
+
     vplus = zeros(0)
     cdlplus = zeros(0)
     vminus = zeros(0)
@@ -15,21 +41,41 @@ function doublelayercap(sys;vrange=-1:0.05:1,δ=1.0e-4,molarity=0.1,solver_kwarg
     inival0 = solve(sys,inival=pnpunknowns(sys))
     inival=copy(inival0)
     sol=copy(inival0)
+    allprogress=sum(length,ranges)
     ϕprogress = 0
+    
+    function show_error(u,δ)
+        @show cond(inv(Diagonal(sys.matrix))*Matrix(sys.matrix))
+        @show u[1,1:5]
+        @show u[2,1:5]
+        @show u[3,1:5]
+        @show u[4,1:5]
+        @show chemical_potentials!(zeros(2),u[:,1],data)
+        c0,barc= c0_barc(u[:,1],data)
+        @show c0/barc, u[1,1]/barc,u[2,1]/barc
+        @error "bailing out at δ=$(δ) ϕ_we=$(data.ϕ_we)V, molarity=$(molarity)"
+    end
 
-    control=VoronoiFVM.SolverControl(max_round=3, tol_round=1.0e-10;solver_kwargs...)
+    
+    control=VoronoiFVM.SolverControl(max_round=3, tol_round=1.0e-9;solver_kwargs...)
     @withprogress for range in ranges
         sol .= inival0
-        for ϕ in range
+        success=true
+        for ϕ in range 
             try
                 data.ϕ_we= ϕ
                 inival.=sol
+                s=data.scheme
                 solve!(sol, inival, sys; control)
             catch e
-                @warn "δ=0 ϕ_we=$(data.ϕ_we)"
-                rethrow(e)
+                println(e)
+                show_error(inival,0)
+                success=false
             end
-
+#            @show extrema(sol[1,:])
+            if !success
+                break
+            end
             Q = integrate(sys, sys.physics.reaction, sol)
             
             try
@@ -37,8 +83,12 @@ function doublelayercap(sys;vrange=-1:0.05:1,δ=1.0e-4,molarity=0.1,solver_kwarg
                 inival .= sol
                 solve!(sol, inival, sys; control)
             catch e
-                @warn "δ=δ ϕ_we=$(data.ϕ_we)"
-                rethrow(e)
+                println(e)
+                show_error(inival,δ)
+                success=false
+            end
+            if !success
+                break
             end
             Qδ = integrate(sys, sys.physics.reaction, sol)
             cdl = (Qδ[iϕ] - Q[iϕ]) / δ
@@ -62,14 +112,15 @@ end
 
 
 
-function voltagesweep(sys;ϕmax=0.5,ispec=1,n=100,solver_kwargs...)
+function voltagesweep(sys;voltages=-0.5:0.1:0.5,ispec=1,solver_kwargs...)
+    ranges=splitz(voltages)
 
     factory=VoronoiFVM.TestFunctionFactory(sys)
     data=sys.physics.data
     
     tf=testfunction(factory,[data.Γ_bulk],[data.Γ_we] )
 
-    dϕ=ϕmax/n
+
     vplus = zeros(0)
     iplus = zeros(0)
     splus = []
@@ -88,32 +139,46 @@ function voltagesweep(sys;ϕmax=0.5,ispec=1,n=100,solver_kwargs...)
     inival=copy(inival0)
     sol=copy(inival0)
     ϕprogress=0
-    dirs=[-1,1]
-    @withprogress  for dir in dirs
-        inival .= inival0
-        ϕ = 0.0
-        while ϕ <= ϕmax
-            data.ϕ_we=dir * ϕ
-            solve!(sol, inival, sys;mynorm,myrnorm,control) 
-            inival .= sol
-#            I=integrate(sys,tf,sol)
-            I=-integrate(sys,sys.physics.breaction,sol; boundary=true)[:,data.Γ_we]
-            if dir == 1
-                push!(splus, copy(sol))
-                push!(vplus, dir * ϕ)
-                push!(iplus, I[ispec]*F/(mA/cm^2))
-            else
-                push!(sminus, copy(sol))
-                push!(vminus, dir * ϕ)
-                push!(iminus, I[ispec]*F/(mA/cm^2))
-            end
-            ϕ += dϕ
-            ϕprogress +=dϕ
-            @logprogress ϕprogress/(2ϕmax)
-        end
+    function show_error(u)
+        @show u[1,1:5]
+        @show u[2,1:5]
+        @show u[3,1:5]
+        @show u[4,1:5]
+        @show chemical_potentials!(zeros(size(u,1)),u[:,1],data)
+        c0,barc= c0_barc(u[:,1],data)
+        @show c0/barc, u[1,1]/barc,u[2,1]/barc
+        @error "bailing out at ϕ_we=$(data.ϕ_we)V"
     end
-    if dirs[1]==1
-        return vplus,iplus,splus
+
+    allprogress=sum(length,ranges)
+    ϕprogress = 0
+
+    
+    @withprogress for range in ranges
+        inival .= inival0
+        for ϕ in range 
+            data.ϕ_we=ϕ
+            try
+                solve!(sol, inival, sys;mynorm,myrnorm,control)
+            catch e
+                println(e)
+                show_error(sol)
+                break
+            end
+            inival .= sol
+            I=-integrate(sys,sys.physics.breaction,sol; boundary=true)[:,data.Γ_we]
+            if range[end]>range[1]
+                push!(vplus, ϕ)
+                push!(iplus, I[ispec]*F/(mA/cm^2))
+                push!(splus, copy(sol))
+            else
+                push!(vminus, ϕ)
+                push!(iminus, I[ispec]*F/(mA/cm^2))
+                push!(sminus, copy(sol))
+            end
+            ϕprogress +=1
+            @logprogress ϕprogress/allprogress
+        end
     end
     popfirst!(iminus)
     popfirst!(vminus)
@@ -122,13 +187,3 @@ function voltagesweep(sys;ϕmax=0.5,ispec=1,n=100,solver_kwargs...)
 end
 
     
-function splitz(range)
-    if range[1]>=0
-        return [0:step(range):range[end]]
-    elseif range[end]<=0
-        return [0.0:-step(range):range[1]]
-    else
-        [0:-step(range):range[1],0:step(range):range[end]]
-    end
-end
-

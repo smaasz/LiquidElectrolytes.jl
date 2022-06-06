@@ -1,3 +1,4 @@
+
 """
 $(TYPEDEF)
 
@@ -14,7 +15,7 @@ Data for electrolyte.
 $(TYPEDFIELDS)
 """
 @with_kw mutable struct ElectrolyteData <: AbstractElectrolyteData
-    "Number of charged species."
+    "Number of ionic species."
     nc::Int=2
 
     "Potential index in species list."
@@ -32,16 +33,16 @@ $(TYPEDFIELDS)
     "Molar weight of solvent"
     M0::Float64=18.0153*g/mol
 
-    "Molar weight"
+    "Molar weight of ions"
     M::Vector{Float64}=fill(M0,nc)
 
-    "Charge numbers"
+    "Charge numbers of ions"
     z::Vector{Int}=[ (-1)^(i-1) for i=1:nc]
     
     "Charge numbers scaled by F/RT"
     Z::Vector{Float64}=z.*F/(R*T)
 
-    "Bulk concentration"
+    "Bulk ion concentrations"
     c_bulk::Vector{Float64}=fill(0.1*mol/dm^3,nc)
 
     "Bulk voltage"
@@ -59,10 +60,10 @@ $(TYPEDFIELDS)
    "Solvation numbers"
     κ::Vector{Float64}=fill(0,nc)
     
-    "Molar volumes"
+    "Molar volumes of ions"
     v::Vector{Float64}=fill(v0,nc)
     
-    "Dielectric permittivity of water"
+    "Dielectric permittivity of solvent"
     ε::Float64=78.49
 
     "Pressure scaling factor"
@@ -80,8 +81,32 @@ end
 
 Base.show(io::IO, this::AbstractElectrolyteData)=showstruct(io,this)
 
+"""
+    Cdl0(electrolyte)
 
+Double layer capacitance at zero voltage.
+
+### Example
+
+```jldoctest
+@siunits mol dm μF cm
+ely=ElectrolyteData(c_bulk=fill(0.01*mol/dm^3,2))
+round(Cdl0(ely),digits=4)/(μF/cm^2)
+# output
+
+22.85
+```
+"""
 Cdl0(data::AbstractElectrolyteData)=sqrt( 2*(data.ε)*ε_0*F^2*data.c_bulk[1]/(R*data.T));
+
+
+"""
+    ldebye(electrolyte)
+
+Debye length.
+"""
+ldebye(data)=sqrt( data.ε*ε_0*R*data.T/(F^2*data.c_bulk[1]))
+
 
 
 """
@@ -91,8 +116,8 @@ Calculate charge from vector of concentrations
 """
 function charge(u,electrolyte::AbstractElectrolyteData)
     q=zero(eltype(u))
-    for ic=1:data.nc
-        q+=u[ic] * data.z[ic]
+    for ic=1:electrolyte.nc
+        q+=u[ic] * electrolyte.z[ic]
     end
     q*F
 end
@@ -105,28 +130,28 @@ end
 vrel(ic,electrolyte)=electrolyte.v[ic]/electrolyte.v0+electrolyte.κ[ic]
 
 
-"""
+@doc raw"""
 	c0_barc(u,electrolyte)
 
-Calculate ``c_0`` and ``\\bar c``
-from using the incompressibility constraint (assuming ``κ_0=0``):
+Calculate solvent concentration ``c_0`` and summary concentration ``\bar c`` from vector of concentrations `c`
+using the incompressibility constraint (assuming ``κ_0=0``):
 ```math
- \\sum_{i=0}^N c_i (v_i + κ_iv_0) =1
+ \sum_{i=0}^N c_i (v_i + κ_iv_0) =1
 ```
 
 This gives
 
 ```math
- c_0v_0=1-\\sum_{i=1}^N c_i (v_i+ κ_iv_0)
+ c_0v_0=1-\sum_{i=1}^N c_i (v_i+ κ_iv_0)
 ```
 
 ```math
-c_0= 1/v_0 - \\sum_{i=1}^N c_i(\\frac{v_i}{v_0}+κ)
+c_0= 1/v_0 - \sum_{i=1}^N c_i(\frac{v_i}{v_0}+κ)
 ```
 
 Then we can calculate 
 ```math
- \\bar c= \\sum_{i=0}^N c_i
+ \bar c= \sum_{i=0}^N c_i
 ```
 """
 function c0_barc(c, electrolyte)
@@ -137,17 +162,29 @@ function c0_barc(c, electrolyte)
         c0 -= c[ic] * vrel(ic,electrolyte)
     end
     barc += c0
-    max(1.0e-50,c0), barc
-#    c0,barc
+    c0, barc
 end
 
-c0_barc(u,i,electrolyte) = @views c0_barc(u[:,i], electrolyte)
+"""
+    rlog(u, electrolyte)
 
-log_c0_barc(u,i,electrolyte) = @views rlog.(c0_barc(u, i, electrolyte),electrolyte)
+Regularized logarithm:
+
+```
+   rlog(u,electrolyte)= log(u+electrolyte.logreg)
+```
+"""
+rlog(x,electrolyte::AbstractElectrolyteData)=rlog(x,electrolyte.logreg)
+
+function rlog(x,eps)
+    if x<eps
+        return log(eps)+(x-eps)/eps
+    else
+        return log(x)
+    end
+end
 
 
-
-rlog(u,electrolyte)= log(u+electrolyte.logreg)
 
 function c0(U::Array, electrolyte)
     c0 = similar(U[1,:])
@@ -158,8 +195,19 @@ function c0(U::Array, electrolyte)
     max(c0,1.0e-50)
 end
 
+"""
+    chemical_potentials!(μ,u,electrolyte::AbstractElectrolyteData)
 
-function chemical_potentials!(μ,u,data)
+Calculate chemical potentials from concentrations.
+
+Input:
+  -  `μ`: mutated, allocated memory for result
+  -  `u`: concentrations
+Returns `μ0, μ`: chemical potential of solvent and chemical
+potentials of ions.
+
+"""
+function chemical_potentials!(μ,u,data::AbstractElectrolyteData)
     c0,barc=c0_barc(u,data)
     p=u[data.ip]*data.pscale
     p_ref=0
@@ -170,10 +218,23 @@ function chemical_potentials!(μ,u,data)
     μ0,μ
 end
 
+
+
+"""
+    rrate(R0,β,A)
+
+Thermodynamic reaction rate expression
+
+
+    rrate(R0,β,A)=R0*(exp(-β*A) - exp((1-β)*A))
+"""
 rrate(R0,β,A)=R0*(exp(-β*A) - exp((1-β)*A))
 
-ldebye(data)=sqrt( data.ε*ε_0*R*data.T/(F^2*data.c_bulk[1]))
+"""
+    wnorm(u,w,p)
 
+Weighted norm with respect to columns
+"""
 function wnorm(u,w,p)
     @views norms=[w[i]*LinearAlgebra.norm(u[i,:],p) for i=1:size(u,1)]
     LinearAlgebra.norm(norms,p)

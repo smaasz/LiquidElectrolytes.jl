@@ -1,8 +1,10 @@
 using Test
 using LiquidElectrolytes
+using LinearAlgebra
 using Unitful,PhysicalConstants
 import LiquidElectrolytes: @siunits, @phconstants, @si_str
 using CompositeStructs,Parameters
+using Base: @kwdef
 using ExtendableGrids,VoronoiFVM
 
 @phconstants AvogadroConstant
@@ -46,12 +48,28 @@ end
     X=geomspace(0,L,hmin,hmax)
 
     grid=simplexgrid(X)
-    celldata=HalfCellData(Γ_we=1, Γ_bulk=2)
-    cell=PNPSystem(grid;bcondition,celldata)
-    volts,caps=doublelayercap(cell;ϕmax=1,n=50,molarity=0.1,δ=1.0e-4)
 
-    ecell=create_equilibrium_system(grid,EquilibriumData(celldata))
-    evolts,ecaps=calc_Cdl(ecell,vmax=1,molarity=0.1,δV=1.0e-4,nsteps=50)
-    @test Cdl0(celldata) ≈ Cdl0(EquilibriumData(celldata))
-    @test isapprox(caps,ecaps,rtol=1.0e-3)
+    acelldata=HalfCellData(Γ_we=1, Γ_bulk=2,logreg=1.0e-20, scheme=:act)
+    acell=PNPSystem(grid;bcondition,celldata=acelldata)
+    avolts,acaps=doublelayercap(acell;voltages=-1:0.01:1,molarity=0.1,δ=1.0e-4)
+    
+    μcelldata=HalfCellData(Γ_we=1, Γ_bulk=2,logreg=1.0e-20, scheme=:μex)
+    μcell=PNPSystem(grid;bcondition,celldata=μcelldata)
+    μvolts,μcaps=doublelayercap(μcell;voltages=-1:0.01:1,molarity=0.1,δ=1.0e-4)
+    
+    ccelldata=HalfCellData(Γ_we=1, Γ_bulk=2,logreg=1.0e-20, scheme=:cent)
+    ccell=PNPSystem(grid;bcondition,celldata=ccelldata)
+    cvolts,ccaps=doublelayercap(ccell;voltages=-1:0.01:1,molarity=0.1,δ=1.0e-4)
+    
+    ecell=create_equilibrium_system(grid,EquilibriumData(acelldata))
+    evolts,ecaps=calc_Cdl(ecell,vmax=1,molarity=0.1,δV=1.0e-4,nsteps=101)
+
+    @show norm((acaps-ecaps)./ecaps)
+    @show norm((acaps-μcaps)./acaps)
+    @show norm((acaps-ccaps)./acaps)
+
+    @test Cdl0(acelldata) ≈ Cdl0(EquilibriumData(acelldata))
+    @test isapprox(acaps,ecaps,rtol=1.0e-2)
+    @test isapprox(acaps,μcaps,rtol=1.0e-10)
+    @test isapprox(acaps,ccaps,rtol=1.0e-10)
 end    

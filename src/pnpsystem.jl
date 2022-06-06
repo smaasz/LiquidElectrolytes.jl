@@ -14,6 +14,7 @@ charge(u,i,electrolyte) = @views charge(u[:,i], electrolyte)
 function pnpreaction(f, u, node, electrolyte)
     ## Charge density
     f[electrolyte.iϕ] = -charge(u,electrolyte)
+    f[electrolyte.ip] = 0
     for ic = 1:electrolyte.nc
         f[ic] = 0
     end
@@ -33,26 +34,34 @@ function bulkbc(f,u,bnode,data)
     end
 end
 
+function dμ(γk, γl, electrolyte)
+    if abs(γk-γl)<1.0e-20
+        return 0.0
+    elseif abs(γk)<abs(γl)
+        return -rlog(γk/γl,electrolyte)*(R*electrolyte.T)
+    elseif abs(γk)>abs(γl)
+        return rlog(γl/γk,electrolyte)*(R*electrolyte.T)
+    else
+        return 0.0
+    end
+end
+
 function sflux(ic,dϕ,ck,cl,γk,γl,bar_ck,bar_cl,electrolyte)
-    μk=rlog(γk,electrolyte)*(R*electrolyte.T)
-    μl=rlog(γl,electrolyte)*(R*electrolyte.T)
-    bp, bm = fbernoulli_pm(electrolyte.Z[ic] * dϕ  + (μk - μl)   /(R*electrolyte.T))
+    bp, bm = fbernoulli_pm(electrolyte.Z[ic] * dϕ  + dμ(γk,γl,electrolyte) /(R*electrolyte.T))
     electrolyte.D[ic] * (bm*ck - bp*cl)
 end
 
 function aflux(ic,dϕ,ck,cl,γk,γl,bar_ck,bar_cl,electrolyte)
+    γk+=electrolyte.logreg
+    γl+=electrolyte.logreg
     bp, bm = fbernoulli_pm(electrolyte.Z[ic] * dϕ)
-    electrolyte.D[ic] * (bm*ck*γk - bp*cl*γl)*2.0/(γk+γl)
+    electrolyte.D[ic] * (bm*ck/γk - bp*cl/γl)*(γk+γl)/2
 end
 
 function cflux(ic,dϕ,ck,cl,γk,γl,bar_ck,bar_cl,electrolyte)
-    μk=rlog(γk,electrolyte)*(R*electrolyte.T)
-    μl=rlog(γl,electrolyte)*(R*electrolyte.T)
-    
-    hk = rlog(ck/bar_ck,electrolyte)*(R*electrolyte.T) + μk
-    hl = rlog(cl/bar_cl,electrolyte)*(R*electrolyte.T) + μl
-    
-    electrolyte.D[ic] * 0.5 * (ck + cl) * (hk - hl + electrolyte.z[ic]*F*dϕ)/(R*electrolyte.T)
+    lck = rlog(ck/bar_ck,electrolyte)*(R*electrolyte.T)
+    lcl = rlog(cl/bar_cl,electrolyte)*(R*electrolyte.T)
+    electrolyte.D[ic] * 0.5 * (ck + cl) * (lck - lcl +  dμ(γk,γl,electrolyte)  + electrolyte.z[ic]*F*dϕ)/(R*electrolyte.T)
 end
 
 
@@ -74,27 +83,30 @@ function pnpflux(f, u, edge, electrolyte)
     ϕk,ϕl = u[iϕ,1],u[iϕ,2]
 
     qk,ql=charge(u,1,electrolyte),charge(u,2,electrolyte)
-
-    c0k,bar_ck=c0_barc(u, 1, electrolyte)
-    c0l,bar_cl=c0_barc(u, 2, electrolyte)
+    @views c0k,bar_ck=c0_barc(u[:,1], electrolyte)
+    @views c0l,bar_cl=c0_barc(u[:,2], electrolyte)
     
     dϕ = ϕk-ϕl
     dp = pk-pl
+
 
     f[iϕ]=electrolyte.ε*ε_0*dϕ*!electrolyte.neutralflag
     f[ip]=dp + (qk+ql)*dϕ/(2*electrolyte.pscale)
 
     γk,γl=1.0,1.0
     
+
     for ic = 1:electrolyte.nc
+        f[ic]=0.0
         ck,cl=u[ic,1],u[ic,2]
         if !iszero(electrolyte.v)
             M=electrolyte.M[ic]/electrolyte.M0
             V=electrolyte.v[ic]+(electrolyte.κ[ic]-M)*electrolyte.v0
-            γk = exp(V*pk/(R*electrolyte.T))*bar_ck^(M-1.0)/(c0k^M)
-            γl = exp(V*pl/(R*electrolyte.T))*bar_cl^(M-1.0)/(c0l^M)
+            γk = exp(-V*pk/(R*electrolyte.T))*c0k^M/bar_ck^(M-1.0)
+            γl = exp(-V*pl/(R*electrolyte.T))*c0l^M/bar_cl^(M-1.0)
         end
-        
+
+
         if electrolyte.scheme==:μex
             f[ic]=sflux(ic,dϕ,ck,cl,γk,γl,bar_ck, bar_cl,electrolyte)
         elseif electrolyte.scheme==:act
@@ -111,7 +123,7 @@ end
 
 
 
-function PNPSystem(grid;celldata=nothing,bcondition=default_bcondition,kwargs...)
+function PNPSystem(grid;celldata=ElectrolyteData(),bcondition=default_bcondition,kwargs...)
     sys=VoronoiFVM.System(grid;
                           data=celldata,
                           flux=pnpflux,

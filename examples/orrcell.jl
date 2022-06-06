@@ -11,7 +11,7 @@ using CompositeStructs
 const F=N_A*e
 
 
-@composite @kwdef mutable struct ORRCell
+@composite @kwdef mutable struct ORRCell <: AbstractElectrolyteData
     ElectrolyteData...
     R0::Float64=10.0e-6*mol/(cm^2*s)
     Δg::Float64=0.0
@@ -42,8 +42,8 @@ function halfcellbc(f,u,bnode,data)
 end
 
 
-function main(;n=100,ϕmax=0.2,molarity=0.1,nref=0,neutral=false, kwargs...)
-    defaults=(; max_round=3,tol_round=1.0e-9, verbose=true, tol_relative=1.0e-7,tol_mono=1.0e-10)
+function main(;voltages=-0.2:0.005:0.2,molarity=0.1,nref=0,neutral=false,scheme=:μex,logreg=1.0e-10,kwargs...)
+    defaults=(; max_round=3,tol_round=1.0e-10, verbose=true, tol_relative=1.0e-7,tol_mono=1.0e-10)
     kwargs=merge(defaults, kwargs) 
     
     hmin=1.0e-1*nm*2.0^(-nref)
@@ -54,7 +54,7 @@ function main(;n=100,ϕmax=0.2,molarity=0.1,nref=0,neutral=false, kwargs...)
     grid=simplexgrid(X)
     
     
-    celldata=ORRCell(;nc=3, z=[1,-2,0], κ=fill(0,3), Γ_we=1, Γ_bulk=2,neutralflag=neutral)
+    celldata=ORRCell(;nc=3, z=[1,-2,0], κ=fill(0,3), Γ_we=1, Γ_bulk=2,neutralflag=neutral,logreg,scheme)
 
     @unpack iϕ,ihplus,iso4,io2=celldata
 
@@ -62,15 +62,17 @@ function main(;n=100,ϕmax=0.2,molarity=0.1,nref=0,neutral=false, kwargs...)
     celldata.c_bulk[io2]=0.001*mol/dm^3
     celldata.c_bulk[iso4]=molarity*mol/dm^3
     celldata.c_bulk[ihplus]=2.0*molarity*mol/dm^3
+    celldata.R0=10.0e-8*mol/(cm^2*s)
 
 
     @assert isapprox(celldata.c_bulk'*celldata.z,0, atol=1.0e-12)
     
     cell=PNPSystem(grid;bcondition=halfcellbc,celldata)
-
+    check_allocs!(cell,false)
+    
     vis=GridVisualizer(resolution=(1200,400),layout=(1,5),Plotter=PyPlot)
 
-    volts,currs, sols=voltagesweep(cell;ϕmax,n,ispec=io2,kwargs...)
+    volts,currs, sols=voltagesweep(cell;voltages,ispec=io2,kwargs...)
     tsol=VoronoiFVM.TransientSolution(sols,volts)
 
     for it=1:length(tsol.t)
@@ -81,7 +83,8 @@ function main(;n=100,ϕmax=0.2,molarity=0.1,nref=0,neutral=false, kwargs...)
 
     xmax=20*nm
     xlimits=[0,xmax]
-    aspect=[2*xmax/ϕmax]
+        aspect=3.5*xmax/(tsol.t[end]-tsol.t[begin])
+
     scalarplot!(vis[1,1],currs,volts,markershape=:none,title="IV",xlabel="I",ylabel="V")
     scalarplot!(vis[1,2],cell,tsol;species=io2,aspect,xlimits,title="O2",colormap=:summer)
     scalarplot!(vis[1,3],cell,tsol;species=ihplus,aspect,xlimits,title="H+",colormap=:summer)

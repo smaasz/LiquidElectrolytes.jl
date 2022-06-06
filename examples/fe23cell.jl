@@ -45,7 +45,17 @@ function halfcellbc(f,u,bnode,data)
 end
 
 
-function main(;nref=0,compare=false,neutral=false,n=100,ϕmax=0.2, dlcap=false,R0=1.0e-6,logreg=1.0e-18,scheme=:μex,kwargs...)
+function main(;nref=0,
+              compare=false,
+              neutral=false,
+              voltages=-0.2:0.005:0.2,
+              dlcap=false,
+              R0=1.0e-6,
+              logreg=1.0e-10,
+              scheme=:μex,
+              xmax=0.5,
+              kwargs...)
+
     defaults=(; max_round=3,
               tol_round=1.0e-9,
               verbose=false,
@@ -74,10 +84,12 @@ function main(;nref=0,compare=false,neutral=false,n=100,ϕmax=0.2, dlcap=false,R
     @show ldebye(celldata)
     
     cell=PNPSystem(grid;bcondition=halfcellbc,celldata)
+    check_allocs!(cell,false)
 
+    # Compare electroneutral and double layer cases
     if compare
         celldata.neutralflag=false
-        volts,currs, sols=voltagesweep(cell;ϕmax,n,ispec=ife2,kwargs...)
+        volts,currs, sols=voltagesweep(cell;voltages,ispec=ife2,kwargs...)
         
         tsol=VoronoiFVM.TransientSolution(sols,volts)
         
@@ -87,7 +99,7 @@ function main(;nref=0,compare=false,neutral=false,n=100,ϕmax=0.2, dlcap=false,R
         end
         
         celldata.neutralflag=true
-        nvolts,ncurrs, sols=voltagesweep(cell;ϕmax,n,ispec=ife2,kwargs...)
+        nvolts,ncurrs, sols=voltagesweep(cell;voltages,ispec=ife2,kwargs...)
         
         ntsol=VoronoiFVM.TransientSolution(sols,volts)
         
@@ -97,15 +109,15 @@ function main(;nref=0,compare=false,neutral=false,n=100,ϕmax=0.2, dlcap=false,R
         return reveal(vis)
     end
     
-    #---------
+
+    # Calculate double layer capacitances
     if dlcap
         molarities=[0.001,0.01,0.1,1]
-    
-    vis=GridVisualizer(resolution=(500,300),legend=:rt,clear=true,xlabel="φ/V",ylabel="C_dl/(μF/cm^2)",Plotter=PyPlot)
+        vis=GridVisualizer(resolution=(500,300),legend=:rt,clear=true,xlabel="φ/V",ylabel="C_dl/(μF/cm^2)",Plotter=PyPlot)
         hmol=1/length(molarities)
         for imol=1:length(molarities)
 	    c=RGB(1-imol*hmol,0,imol*hmol)
-	    t=@elapsed volts,caps=doublelayercap(cell;ϕmax,n,molarity=molarities[imol],kwargs...)
+	    t=@elapsed volts,caps=doublelayercap(cell;voltages,molarity=molarities[imol],kwargs...)
 	    cdl0=Cdl0(cell.physics.data)
 	    scalarplot!(vis,volts,caps/(μF/cm^2),
 		        color=c,clear=false,label="$(molarities[imol])M",markershape=:none)
@@ -113,7 +125,10 @@ function main(;nref=0,compare=false,neutral=false,n=100,ϕmax=0.2, dlcap=false,R
         end
         return
     end
-    volts,currs, sols=voltagesweep(cell;ϕmax,n,ispec=ife2,kwargs...)
+    
+    # Full caculation
+
+    volts,currs, sols=voltagesweep(cell;voltages,ispec=ife2,kwargs...)
     tsol=VoronoiFVM.TransientSolution(sols,volts)
 
     for it=1:length(tsol.t)
@@ -121,28 +136,17 @@ function main(;nref=0,compare=false,neutral=false,n=100,ϕmax=0.2, dlcap=false,R
         tsol.u[it][ife3,:]/=mol/dm^3
     end
 
-    @show extrema(tsol[ife2,end,:])
-    @show extrema(tsol[ife3,end,:])
-    if true
-        xmax=0.25*nm
-#        xmax=L
-        xlimits=[0,xmax]
-        vis=GridVisualizer(resolution=(1200,400),layout=(1,5),Plotter=PyPlot,clear=true)
-        aspect=[2*xmax/(ϕmax)]
-        scalarplot!(vis[1,1],F*currs/(mA/cm^2),volts,markershape=:none,title="IV",xlabel="I",ylabel="V")
-        scalarplot!(vis[1,2],cell,tsol;species=ife2,aspect,xlimits,title="Fe2+",colormap=:summer)
-        scalarplot!(vis[1,3],cell,tsol;species=ife3,aspect,xlimits,title="Fe3+",colormap=:summer)
-        scalarplot!(vis[1,4],cell,tsol;species=iϕ,aspect,xlimits,title="ϕ",colormap=:bwr)
-        scalarplot!(vis[1,5],cell,tsol;species=ip,aspect,xlimits,title="p",colormap=:summer)
-    else
-    
-        vis=GridVisualizer(resolution=(500,300),Plotter=PyPlot,legend=:rb)
-        scalarplot!(vis,grid, tsol[ife2,:,end], color=:red, label="fe2+")
-#        scalarplot!(vis,grid, tsol[iϕ,:,1], color=:red, label="ϕ",flimits=(-2.5e-5,2.5e-5))
-        scalarplot!(vis,grid, tsol[ife3,:,end], color=:green, label="fe3+",clear=false)
-    
-    end
-#    save(plotsdir("1DResults.pdf"),vis)
+    xmax=xmax*nm
+    xlimits=[0,xmax]
+    vis=GridVisualizer(resolution=(1200,400),layout=(1,5),Plotter=PyPlot,clear=true)
+    aspect=3.5*xmax/(tsol.t[end]-tsol.t[begin])
+    scalarplot!(vis[1,1],F*currs/(mA/cm^2),volts,markershape=:none,title="IV",xlabel="I",ylabel="ϕ")
+    scalarplot!(vis[1,2],cell,tsol;species=ife2,aspect,xlimits,title="Fe2+",colormap=:summer,ylabel="ϕ")
+    scalarplot!(vis[1,3],cell,tsol;species=ife3,aspect,xlimits,title="Fe3+",colormap=:summer,ylabel="ϕ")
+    scalarplot!(vis[1,4],cell,tsol;species=iϕ,aspect,xlimits,title="ϕ",colormap=:bwr,ylabel="ϕ")
+    scalarplot!(vis[1,5],cell,tsol;species=ip,aspect,xlimits,title="p",colormap=:summer,ylabel="ϕ")
+
+    #    save(plotsdir("1DResults.pdf"),vis)
     reveal(vis)
 end
 
