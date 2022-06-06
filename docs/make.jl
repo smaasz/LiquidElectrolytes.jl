@@ -1,6 +1,8 @@
-ENV["MPLBACKEND"]="agg"
 using Documenter, LiquidElectrolytes
-import PyPlot
+
+
+#ENV["MPLBACKEND"]="agg"
+#import PyPlot
 
 function mkdocs()
     DocMeta.setdocmeta!(LiquidElectrolytes, :DocTestSetup, :(using LiquidElectrolytes); recursive=true)
