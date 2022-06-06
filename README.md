@@ -4,4 +4,23 @@
 
 LiquidElectrolytes.jl
 =====================
+This package is in pre-release state.
+There are two ways using this package:
+
+- Via github URL: 
+
+```
+pkg> add https://github.com/j-fu/LiquidElectrolytes.jl
+```
+
+- Versions 0.0.x are registered in https://github.com/j-fu/PackageNursery.
+  If you trust this registry, you can issue once
+
+```
+pkg> registry add https://github.com/j-fu/PackageNursery
+```
+and add the package via  
+```
+pkg> add LiquidElectrolytes
+```
 
