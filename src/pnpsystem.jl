@@ -52,8 +52,8 @@ function sflux(ic,dϕ,ck,cl,γk,γl,bar_ck,bar_cl,electrolyte)
 end
 
 function aflux(ic,dϕ,ck,cl,γk,γl,bar_ck,bar_cl,electrolyte)
-    γk+=electrolyte.logreg
-    γl+=electrolyte.logreg
+ #   γk+=electrolyte.logreg
+ #   γl+=electrolyte.logreg
     bp, bm = fbernoulli_pm(electrolyte.Z[ic] * dϕ)
     electrolyte.D[ic] * (bm*ck/γk - bp*cl/γl)*(γk+γl)/2
 end
@@ -78,7 +78,8 @@ Verification calculation is in the paper.
 function pnpflux(f, u, edge, electrolyte)
     iϕ = electrolyte.iϕ # index of potential
     ip = electrolyte.ip
-
+    @unpack ip, iϕ, v0, v, M0, M, κ,  ε, T, nc, neutralflag, pscale = electrolyte
+    
     pk,pl = u[ip,1],u[ip,2]
     ϕk,ϕl = u[iϕ,1],u[iϕ,2]
 
@@ -90,23 +91,22 @@ function pnpflux(f, u, edge, electrolyte)
     dp = pk-pl
 
 
-    f[iϕ]=electrolyte.ε*ε_0*dϕ*!electrolyte.neutralflag
-    f[ip]=dp + (qk+ql)*dϕ/(2*electrolyte.pscale)
+    f[iϕ]=ε*ε_0*dϕ*!neutralflag
+    f[ip]=dp + (qk+ql)*dϕ/(2*pscale)
 
     γk,γl=1.0,1.0
     
 
-    for ic = 1:electrolyte.nc
+    for ic = 1:nc
         f[ic]=0.0
         ck,cl=u[ic,1],u[ic,2]
-        if !iszero(electrolyte.v)
-            M=electrolyte.M[ic]/electrolyte.M0
-            V=electrolyte.v[ic]+(electrolyte.κ[ic]-M)*electrolyte.v0
-            γk = exp(-V*pk/(R*electrolyte.T))*c0k^M/bar_ck^(M-1.0)
-            γl = exp(-V*pl/(R*electrolyte.T))*c0l^M/bar_cl^(M-1.0)
+        if !iszero(v)
+            Mrel=M[ic]/M0
+            V=v[ic]+(κ[ic]-Mrel)*v0
+            γk = exp(-V*pk/(R*T))*c0k^Mrel/bar_ck^(Mrel-1.0)
+            γl = exp(-V*pl/(R*T))*c0l^Mrel/bar_cl^(Mrel-1.0)
         end
-
-
+        
         if electrolyte.scheme==:μex
             f[ic]=sflux(ic,dϕ,ck,cl,γk,γl,bar_ck, bar_cl,electrolyte)
         elseif electrolyte.scheme==:act
