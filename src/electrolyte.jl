@@ -192,7 +192,7 @@ function c0(U::Array, electrolyte)
     for ic = 1:electrolyte.nc
         c0 -= U[ic,:] .* vrel(ic,electrolyte)
     end
-    max(c0,1.0e-50)
+    c0
 end
 
 """
@@ -217,7 +217,6 @@ function chemical_potentials!(μ,u,data::AbstractElectrolyteData)
     end
     μ0,μ
 end
-
 
 
 """

@@ -34,34 +34,28 @@ function bulkbc(f,u,bnode,data)
     end
 end
 
-function dμ(γk, γl, electrolyte)
-    if abs(γk-γl)<1.0e-20
-        return 0.0
-    elseif abs(γk)<abs(γl)
-        return -rlog(γk/γl,electrolyte)*(R*electrolyte.T)
-    elseif abs(γk)>abs(γl)
-        return rlog(γl/γk,electrolyte)*(R*electrolyte.T)
+function dμ(βk, βl, electrolyte)
+    if βk>βl
+        log(βk/βl)*(R*electrolyte.T)
     else
-        return 0.0
+        -log(βl/βk)*(R*electrolyte.T)
     end
 end
 
-function sflux(ic,dϕ,ck,cl,γk,γl,bar_ck,bar_cl,electrolyte)
-    bp, bm = fbernoulli_pm(electrolyte.Z[ic] * dϕ  + dμ(γk,γl,electrolyte) /(R*electrolyte.T))
+function sflux(ic,dϕ,ck,cl,βk,βl,bar_ck,bar_cl,electrolyte)
+    bp, bm = fbernoulli_pm(electrolyte.Z[ic] * dϕ  + dμ(βk,βl,electrolyte) /(R*electrolyte.T))
     electrolyte.D[ic] * (bm*ck - bp*cl)
 end
 
-function aflux(ic,dϕ,ck,cl,γk,γl,bar_ck,bar_cl,electrolyte)
- #   γk+=electrolyte.logreg
- #   γl+=electrolyte.logreg
+function aflux(ic,dϕ,ck,cl,βk,βl,bar_ck,bar_cl,electrolyte)
     bp, bm = fbernoulli_pm(electrolyte.Z[ic] * dϕ)
-    electrolyte.D[ic] * (bm*ck/γk - bp*cl/γl)*(γk+γl)/2
+    electrolyte.D[ic] * (bm*ck*βk - bp*cl*βl)*(1/βk+1/βl)/2
 end
 
-function cflux(ic,dϕ,ck,cl,γk,γl,bar_ck,bar_cl,electrolyte)
-    lck = rlog(ck/bar_ck,electrolyte)*(R*electrolyte.T)
-    lcl = rlog(cl/bar_cl,electrolyte)*(R*electrolyte.T)
-    electrolyte.D[ic] * 0.5 * (ck + cl) * (lck - lcl +  dμ(γk,γl,electrolyte)  + electrolyte.z[ic]*F*dϕ)/(R*electrolyte.T)
+function cflux(ic,dϕ,ck,cl,βk,βl,bar_ck,bar_cl,electrolyte)
+    lck = log(ck/bar_ck)*(R*electrolyte.T)
+    lcl = log(cl/bar_cl)*(R*electrolyte.T)
+    electrolyte.D[ic] * 0.5 * (ck + cl) * (lck - lcl +  dμ(βk,βl,electrolyte)  + electrolyte.z[ic]*F*dϕ)/(R*electrolyte.T)
 end
 
 
@@ -78,7 +72,7 @@ Verification calculation is in the paper.
 function pnpflux(f, u, edge, electrolyte)
     iϕ = electrolyte.iϕ # index of potential
     ip = electrolyte.ip
-    @unpack ip, iϕ, v0, v, M0, M, κ,  ε, T, nc, neutralflag, pscale = electrolyte
+    @unpack ip, iϕ, v0, v, M0, M, κ,  ε, T, nc, neutralflag, pscale, scheme = electrolyte
     
     pk,pl = u[ip,1],u[ip,2]
     ϕk,ϕl = u[iϕ,1],u[iϕ,2]
@@ -94,27 +88,27 @@ function pnpflux(f, u, edge, electrolyte)
     f[iϕ]=ε*ε_0*dϕ*!neutralflag
     f[ip]=dp + (qk+ql)*dϕ/(2*pscale)
 
-    γk,γl=1.0,1.0
-    
+    βk,βl=1.0,1.0
+    bikerman=!iszero(v)
 
     for ic = 1:nc
         f[ic]=0.0
         ck,cl=u[ic,1],u[ic,2]
-        if !iszero(v)
+        if bikerman
             Mrel=M[ic]/M0
             V=v[ic]+(κ[ic]-Mrel)*v0
-            γk = exp(-V*pk/(R*T))*c0k^Mrel/bar_ck^(Mrel-1.0)
-            γl = exp(-V*pl/(R*T))*c0l^Mrel/bar_cl^(Mrel-1.0)
+            βk = xexp(V*pk/(R*T))*bar_ck^(Mrel-1.0)/c0k^Mrel
+            βl = xexp(V*pl/(R*T))*bar_cl^(Mrel-1.0)/c0l^Mrel
         end
         
-        if electrolyte.scheme==:μex
-            f[ic]=sflux(ic,dϕ,ck,cl,γk,γl,bar_ck, bar_cl,electrolyte)
+        if scheme==:μex
+            f[ic]=sflux(ic,dϕ,ck,cl,βk,βl,bar_ck, bar_cl,electrolyte)
         elseif electrolyte.scheme==:act
-            f[ic]=aflux(ic,dϕ,ck,cl,γk,γl,bar_ck, bar_cl,electrolyte)
+            f[ic]=aflux(ic,dϕ,ck,cl,βk,βl,bar_ck, bar_cl,electrolyte)
         elseif  electrolyte.scheme==:cent
-            f[ic]=cflux(ic,dϕ,ck,cl,γk,γl,bar_ck, bar_cl,electrolyte)
+            f[ic]=cflux(ic,dϕ,ck,cl,βk,βl,bar_ck, bar_cl,electrolyte)
         else
-            error("no such scheme: $(electrolyte.scheme)")
+            error("no such scheme: $(scheme)")
         end
     end
 end 
