@@ -33,7 +33,7 @@ jobs:
       - run: |
           julia --project=docs -e '
             using Pkg
-            Pkg.registry.add("https://github.com/j-fu/PackageNursery")
+            Pkg.registry.add("https://github.com/j-fu/PackageNursery")'
       - uses: actions/cache@v1
         env:
           cache-name: cache-artifacts
