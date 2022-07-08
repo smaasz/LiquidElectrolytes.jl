@@ -1,4 +1,4 @@
-using Documenter, LiquidElectrolytes
+using Documenter, LiquidElectrolytes, LessUnitful
 
 
 #ENV["MPLBACKEND"]="agg"
@@ -19,5 +19,5 @@ end
 
 mkdocs()
 
-deploydocs(repo = "git@github.com:j-fu/LiquidElectrolytes.jl.git")
+#deploydocs(repo = "git@github.com:j-fu/LiquidElectrolytes.jl.git")
 
