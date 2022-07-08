@@ -13,31 +13,19 @@ begin
 	using VoronoiFVM
 	using ExtendableGrids
 	using LinearAlgebra
-	using Unitful
+	using LessUnitful
 	using NLsolve
 	using Parameters
-	using PhysicalConstants.CODATA2018
     end
     # If not run in Pluto, this file is included in MultECatJulia.jl as part of the package.
 end
 
 # ╔═╡ ef660f6f-9de3-4896-a65e-13c60df5de1e
-    if isdefined(Main,:PlutoRunner)
-        SI(x)=Float64(Unitful.ustrip(Unitful.upreferred(1*x)));
-	const N_A=SI(AvogadroConstant)
-	const k_B=SI(BoltzmannConstant)
-	const e=SI(ElementaryCharge)
-	const R=SI(MolarGasConstant)
-	const F=e*N_A
-	const ε_0=SI(VacuumElectricPermittivity)
-	const L=SI(Unitful.L)
-	const nm=SI(Unitful.nm)
-	const Mol=N_A
-	const V=SI(Unitful.V)
-        const K=SI(Unitful.K)
-        const Pa=SI(Unitful.Pa)
-        const GPa=SI(Unitful.GPa) 
-    end
+if isdefined(Main,:PlutoRunner)
+    @phconstants N_A k_B e R ε_0
+    @siunits L nm V K Pa GPa μF cm
+    const F=e*N_A
+end
 
 # ╔═╡ 4082c3d3-b728-4bcc-b480-cdee41d9ab99
 isdefined(Main,:PlutoRunner) && TableOfContents(title="",depth=5)
@@ -298,12 +286,12 @@ end;
 	p_ref::Float64   = 1.0e5*Pa  # referece pressure
 	pscale::Float64  = 1.0*GPa   # pressure scaling nparameter
 	E_ref::Float64   = 0.0*V     # reference voltage
-	n0_ref::Float64  = 55.508*Mol/L          # solvent molarity
+	n0_ref::Float64  = 55.508*N_A/L          # solvent molarity
  	v0::Float64      = 1/n0_ref              # solvent molecule volume
 	χ::Float64       = 15                    # dielectric susceptibility 
 	z::Vector{Int}   = [-1,1]                # ion charge numbers
 	κ::Vector{Int}   = [10,10]               # ion solvation numbers
-	molarity::Float64 = 0.1*Mol/L
+	molarity::Float64 = 0.1*N_A/L
 	n_E::Vector{Float64} = [molarity,molarity]  # bulk ion number densities
 	μ_e::Vector{Float64} = [0.0]             # grain facet electron chemical potential
 	
@@ -317,11 +305,11 @@ end
 EquilibriumData()
 
 # ╔═╡ 1065b3e0-60bf-497c-b7fb-c5a065737f77
-L_Debye(EquilibriumData(molarity=0.01Mol/L))/nm
+L_Debye(EquilibriumData(molarity=0.01N_A/L))/nm
 
 # ╔═╡ 5d6340c4-2ddd-429b-a60b-3de5570a7398
 function set_molarity!(data::EquilibriumData,M_E)	
-    n_E=M_E*Mol/L
+    n_E=M_E*N_A/L
     data.molarity=n_E
     data.n_E=[n_E,n_E]
 end
@@ -333,11 +321,11 @@ Cdl0(data::EquilibriumData)=sqrt( 2*(1+data.χ)*ε_0*e^2*data.n_E[1]/(k_B*data.T
 
 # ╔═╡ fe704fb4-d07c-4591-b834-d6cf2f4f7075
 let
-	data=EquilibriumData()
-	set_molarity!(data,0.01)
-	data.χ=78.49-1
-    cdl0=Cdl0(data)/SI(u"μF/cm^2")
-	@assert cdl0 ≈ 22.846691848825248
+    data=EquilibriumData()
+    set_molarity!(data,0.01)
+    data.χ=78.49-1
+    cdl0=Cdl0(data)/(μF/cm^2)
+    @assert cdl0 ≈ 22.846691848825248
 end
 
 # ╔═╡ 3d9a47b8-2754-4a21-84a4-39cbeab12286
@@ -511,10 +499,10 @@ Obtain ion  molarities (molar densities in mol/L)  from system
 """
 
 # ╔═╡ 2ee34d76-7238-46c2-94d1-a40d8b017af6
-calc_cmol(sol,sys)=calc_cnum(sol,sys)/(Mol/L);
+calc_cmol(sol,sys)=calc_cnum(sol,sys)/(N_A/L);
 
 # ╔═╡ 79cc671b-ef6e-42da-8641-61e43f221cb1
-calc_c0mol(sol,sys)=calc_c0num(sol,sys)/(Mol/L);
+calc_c0mol(sol,sys)=calc_c0num(sol,sys)/(N_A/L);
 
 # ╔═╡ f4b2f509-0769-4df7-956e-e8bfc9ccd89a
 md"""

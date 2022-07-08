@@ -1,23 +1,17 @@
 using Test
 using LiquidElectrolytes
 using LinearAlgebra
-using Unitful,PhysicalConstants
-import LiquidElectrolytes: @siunits, @phconstants, @si_str
+using LessUnitful
 using CompositeStructs,Parameters
 using Base: @kwdef
 using ExtendableGrids,VoronoiFVM
 
-@phconstants AvogadroConstant
-@siunits km  mol  dm nm
-@testset "units" begin
-    @test    AvogadroConstant==6.02214076e23
-    @test    km==1000
-    @test    si"cm"==0.01
-end
-
+@phconstants N_A
+const Mol=1
+@siunits dm nm
 
 @testset "cdl0" begin
-    ely=ElectrolyteData(c_bulk=fill(0.01*mol/dm^3,2)                        )
+    ely=ElectrolyteData(c_bulk=fill(0.01*Mol/dm^3,2)                        )
     @test Cdl0(ely)≈ 0.22846691848825248
     edata=EquilibriumData()
     LiquidElectrolytes.set_molarity!(edata,0.01)

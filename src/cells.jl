@@ -160,6 +160,10 @@ function voltagesweep(sys;voltages=-0.5:0.1:0.5,ispec=1,solver_kwargs...)
             data.ϕ_we=ϕ
             try
                 solve!(sol, inival, sys;mynorm,myrnorm,control)
+                #control.Δt=1.0e-2
+                #control.Δu_opt=1.0e10
+                #tsol=solve(sys;inival,times=[0,10],control,mynorm,myrnorm)
+                #sol.=tsol[end]
             catch e
                 println(e)
                 show_error(sol)

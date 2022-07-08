@@ -84,7 +84,7 @@ Base.show(io::IO, this::AbstractElectrolyteData)=showstruct(io,this)
 """
     Cdl0(electrolyte)
 
-Double layer capacitance at zero voltage.
+Double layer capacitance at zero voltage for symmetric binary electrolyte.
 
 ### Example
 
@@ -174,9 +174,9 @@ Regularized logarithm:
    rlog(u,electrolyte)= log(u+electrolyte.logreg)
 ```
 """
-rlog(x,electrolyte::AbstractElectrolyteData)=rlog(x,electrolyte.logreg)
+rlog(x,electrolyte::AbstractElectrolyteData)=rlog(x,eps=electrolyte.logreg)
 
-function rlog(x,eps)
+function rlog(x;eps=1.0e-20)
     if x<eps
         return log(eps)+(x-eps)/eps
     else

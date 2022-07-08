@@ -3,6 +3,7 @@ using Base: @kwdef
 using Parameters
 using VoronoiFVM,ExtendableGrids,GridVisualize
 using LiquidElectrolytes
+using LessUnitful
 using CompositeStructs,Parameters
 using PyPlot,Colors
 
@@ -22,7 +23,7 @@ function bcondition(f,u,bnode,data)
 end
 
 
-function main(;voltages=-1.25:0.01:1.25,nref=0,scheme=:μex,logreg=1.0e-10,kwargs...)
+function main(;voltages=-1:0.01:1,nref=0,scheme=:μex,logreg=1.0e-10,kwargs...)
     hmin=1.0e-1*nm*2.0^(-nref)
     hmax=1.0*nm*2.0^(-nref)
     L=20.0*nm

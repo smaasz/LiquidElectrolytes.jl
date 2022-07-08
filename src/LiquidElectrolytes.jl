@@ -5,7 +5,7 @@ using Parameters
 using ProgressLogging
 using StaticArrays
 using LinearAlgebra
-using Unitful
+using LessUnitful
 
 function showstruct(io::IO,this)
     for name in fieldnames(typeof(this))
@@ -13,15 +13,13 @@ function showstruct(io::IO,this)
     end
 end
 
-include("units.jl")
 
 @phconstants N_A e R ε_0 k_B
-const F=N_A*e
-const Mol=N_A
 @siunits K  dm m s g nm Pa GPa V K L cm mA mol μF
+const F=N_A*e
+const Mol=1
 
 
-export @siunits,@phconstants,@si_str
 
 
 include("electrolyte.jl")

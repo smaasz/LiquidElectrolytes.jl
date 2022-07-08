@@ -2,6 +2,7 @@ module fe23cell
 using ExtendableGrids,GridVisualize
 using VoronoiFVM
 using LiquidElectrolytes
+using LessUnitful
 using PyPlot,Colors, Parameters
 using StaticArrays
 using CompositeStructs
@@ -118,10 +119,8 @@ function main(;nref=0,
         for imol=1:length(molarities)
 	    c=RGB(1-imol*hmol,0,imol*hmol)
 	    t=@elapsed volts,caps=doublelayercap(cell;voltages,molarity=molarities[imol],kwargs...)
-	    cdl0=Cdl0(cell.physics.data)
 	    scalarplot!(vis,volts,caps/(μF/cm^2),
 		        color=c,clear=false,label="$(molarities[imol])M",markershape=:none)
-	    scalarplot!(vis,[0],[cdl0]/(μF/cm^2),clear=false,markershape=:circle,label="")
         end
         return
     end

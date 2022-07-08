@@ -36,9 +36,9 @@ end
 
 function dμ(βk, βl, electrolyte)
     if βk>βl
-        log(βk/βl)*(R*electrolyte.T)
+        rlog(βk/βl)*(R*electrolyte.T)
     else
-        -log(βl/βk)*(R*electrolyte.T)
+        -rlog(βl/βk)*(R*electrolyte.T)
     end
 end
 
@@ -74,7 +74,7 @@ function pnpflux(f, u, edge, electrolyte)
     ip = electrolyte.ip
     @unpack ip, iϕ, v0, v, M0, M, κ,  ε, T, nc, neutralflag, pscale, scheme = electrolyte
     
-    pk,pl = u[ip,1],u[ip,2]
+    pk,pl = u[ip,1]*pscale,u[ip,2]*pscale
     ϕk,ϕl = u[iϕ,1],u[iϕ,2]
 
     qk,ql=charge(u,1,electrolyte),charge(u,2,electrolyte)
@@ -86,7 +86,7 @@ function pnpflux(f, u, edge, electrolyte)
 
 
     f[iϕ]=ε*ε_0*dϕ*!neutralflag
-    f[ip]=dp + (qk+ql)*dϕ/(2*pscale)
+    f[ip]=dp +(qk+ql)*dϕ/2
 
     βk,βl=1.0,1.0
     bikerman=!iszero(v)
@@ -97,10 +97,10 @@ function pnpflux(f, u, edge, electrolyte)
         if bikerman
             Mrel=M[ic]/M0
             V=v[ic]+(κ[ic]-Mrel)*v0
-            βk = xexp(V*pk/(R*T))*bar_ck^(Mrel-1.0)/c0k^Mrel
-            βl = xexp(V*pl/(R*T))*bar_cl^(Mrel-1.0)/c0l^Mrel
+            βk = exp(V*pk/(R*T))*bar_ck^(Mrel-1.0)/c0k^Mrel
+            βl = exp(V*pl/(R*T))*bar_cl^(Mrel-1.0)/c0l^Mrel
         end
-        
+
         if scheme==:μex
             f[ic]=sflux(ic,dϕ,ck,cl,βk,βl,bar_ck, bar_cl,electrolyte)
         elseif electrolyte.scheme==:act
