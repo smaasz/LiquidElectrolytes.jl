@@ -8,7 +8,7 @@ using LessUnitful
 using CompositeStructs
 
 @phconstants R N_A e
-@siunits nm cm μF mol dm s
+@unitfactors nm cm μF mol dm s
 const F=N_A*e
 
 

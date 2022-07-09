@@ -1,7 +1,7 @@
 name = "LiquidElectrolytes"
 uuid = "5a7dfd8c-b3af-4c8d-a082-d3a774d75e72"
 authors = ["Jürgen Fuhrmann <juergen-fuhrmann@web.de>"]
-version = "0.0.5"
+version = "0.0.6"
 
 [deps]
 CodeTracking = "da1fd8a2-8d9e-5ec2-8556-3022fb5608a2"
@@ -36,3 +36,4 @@ PlutoUI = "0.7.39"
 ProgressLogging = "0.1.4"
 StaticArrays = "1.4.4"
 VoronoiFVM = "0.17"
+LessUnitful = "0.0.2"

@@ -90,7 +90,7 @@ Double layer capacitance at zero voltage for symmetric binary electrolyte.
 
 ```jldoctest
 using LessUnitful
-@siunits mol dm μF cm
+@unitfactors mol dm μF cm
 ely=ElectrolyteData(c_bulk=fill(0.01*mol/dm^3,2))
 round(Cdl0(ely)/(μF/cm^2),digits=2)
 # output

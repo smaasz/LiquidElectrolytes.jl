@@ -11,7 +11,7 @@ using StaticArrays
 @phconstants N_A e R ε_0
 const F=N_A*e
 
-@siunits nm cm μF mol dm s mA A
+@unitfactors nm cm μF mol dm s mA A
 
 
 @composite @kwdef mutable struct FE23Cell <: AbstractElectrolyteData

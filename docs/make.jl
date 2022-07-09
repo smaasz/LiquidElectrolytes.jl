@@ -1,9 +1,6 @@
 using Documenter, LiquidElectrolytes, LessUnitful
 
 
-#ENV["MPLBACKEND"]="agg"
-#import PyPlot
-
 function mkdocs()
     DocMeta.setdocmeta!(LiquidElectrolytes, :DocTestSetup, :(using LiquidElectrolytes); recursive=true)
     makedocs(sitename="LiquidElectrolytes.jl",
@@ -15,9 +12,11 @@ function mkdocs()
              pages=[
                  "Home"=>"index.md"
              ])
+    if !isinteractive()
+        deploydocs(repo = "github.com/j-fu/LiquidElectrolytes.jl.git", devbranch = "main")
+    end
+
 end
 
 mkdocs()
-
-#deploydocs(repo = "git@github.com:j-fu/LiquidElectrolytes.jl.git")
 

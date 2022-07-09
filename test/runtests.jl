@@ -8,7 +8,7 @@ using ExtendableGrids,VoronoiFVM
 
 @phconstants N_A
 const Mol=1
-@siunits dm nm
+@unitfactors dm nm
 
 @testset "cdl0" begin
     ely=ElectrolyteData(c_bulk=fill(0.01*Mol/dm^3,2)                        )

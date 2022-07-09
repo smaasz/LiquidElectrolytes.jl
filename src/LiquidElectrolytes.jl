@@ -15,7 +15,7 @@ end
 
 
 @phconstants N_A e R ε_0 k_B
-@siunits K dm m s g nm Pa GPa V K L cm mA mol μF
+@unitfactors K dm m s g nm Pa GPa V K L cm mA mol μF
 const F=N_A*e
 
 
