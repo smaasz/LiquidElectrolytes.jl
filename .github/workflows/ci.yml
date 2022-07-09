@@ -35,7 +35,7 @@ jobs:
             using Pkg
             Pkg.Registry.add("General")
             Pkg.Registry.add(RegistrySpec(url = "https://github.com/j-fu/PackageNursery"))'
-       - uses: actions/cache@v1
+      - uses: actions/cache@v1
         env:
           cache-name: cache-artifacts
         with:
