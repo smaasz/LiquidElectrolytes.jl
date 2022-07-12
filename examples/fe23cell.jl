@@ -49,10 +49,10 @@ end
 function main(;nref=0,
               compare=false,
               neutral=false,
-              voltages=-0.2:0.005:0.2,
+              voltages=-1:0.005:1,
               dlcap=false,
               R0=1.0e-6,
-              logreg=1.0e-10,
+              epsreg=1.0e-20,
               scheme=:μex,
               xmax=0.5,
               kwargs...)
@@ -71,7 +71,7 @@ function main(;nref=0,
     
     grid=simplexgrid(X)
 
-    celldata=FE23Cell(;nc=4, z=[1,2,3,-2], neutralflag=neutral,κ=fill(0,4), Γ_we=1, Γ_bulk=2, R0=R0*mol/(cm^2*s),scheme,logreg)
+    celldata=FE23Cell(;nc=4, z=[1,2,3,-2], neutralflag=neutral,κ=fill(0,4), Γ_we=1, Γ_bulk=2, R0=R0*mol/(cm^2*s),scheme,epsreg)
 
     @unpack iϕ,ihplus,ife2,ife3,iso4, ip=celldata
     sc=1

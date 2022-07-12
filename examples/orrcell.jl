@@ -43,8 +43,8 @@ function halfcellbc(f,u,bnode,data)
 end
 
 
-function main(;voltages=-0.2:0.005:0.2,molarity=0.1,nref=0,neutral=false,scheme=:μex,logreg=1.0e-10,kwargs...)
-    defaults=(; max_round=3,tol_round=1.0e-10, verbose=true, tol_relative=1.0e-7,tol_mono=1.0e-10)
+function main(;voltages=-1:0.005:1,molarity=0.1,nref=0,neutral=false,scheme=:μex,epsreg=1.0e-20,kwargs...)
+    defaults=(; max_round=3,tol_round=1.0e-10, verbose=false, tol_relative=1.0e-7,tol_mono=1.0e-10)
     kwargs=merge(defaults, kwargs) 
     
     hmin=1.0e-1*nm*2.0^(-nref)
@@ -55,7 +55,7 @@ function main(;voltages=-0.2:0.005:0.2,molarity=0.1,nref=0,neutral=false,scheme=
     grid=simplexgrid(X)
     
     
-    celldata=ORRCell(;nc=3, z=[1,-2,0], κ=fill(0,3), Γ_we=1, Γ_bulk=2,neutralflag=neutral,logreg,scheme)
+    celldata=ORRCell(;nc=3, z=[1,-2,0], κ=fill(0,3), Γ_we=1, Γ_bulk=2,neutralflag=neutral,epsreg,scheme)
 
     @unpack iϕ,ihplus,iso4,io2=celldata
 
@@ -84,7 +84,7 @@ function main(;voltages=-0.2:0.005:0.2,molarity=0.1,nref=0,neutral=false,scheme=
 
     xmax=20*nm
     xlimits=[0,xmax]
-        aspect=3.5*xmax/(tsol.t[end]-tsol.t[begin])
+    aspect=3.5*xmax/(tsol.t[end]-tsol.t[begin])
 
     scalarplot!(vis[1,1],currs,volts,markershape=:none,title="IV",xlabel="I",ylabel="V")
     scalarplot!(vis[1,2],cell,tsol;species=io2,aspect,xlimits,title="O2",colormap=:summer)

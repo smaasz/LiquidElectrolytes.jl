@@ -75,8 +75,8 @@ $(TYPEDFIELDS)
     "Electroneutrality switch"
     scheme::Symbol=:μex
 
-    "Logarithm regularization"
-    logreg::Float64=1.0e-18
+    "Regularization parameter"
+    epsreg::Float64=1.0e-20
 end
 
 Base.show(io::IO, this::AbstractElectrolyteData)=showstruct(io,this)
@@ -163,7 +163,7 @@ function c0_barc(c, electrolyte)
         c0 -= c[ic] * vrel(ic,electrolyte)
     end
     barc += c0
-    c0, barc
+    c0+electrolyte.epsreg, barc+electrolyte.epsreg
 end
 
 """
@@ -172,10 +172,10 @@ end
 Regularized logarithm:
 
 ```
-   rlog(u,electrolyte)= log(u+electrolyte.logreg)
+   rlog(u,electrolyte)= log(u+electrolyte.epsreg)
 ```
 """
-rlog(x,electrolyte::AbstractElectrolyteData)=rlog(x,eps=electrolyte.logreg)
+rlog(x,electrolyte::AbstractElectrolyteData)=rlog(x,eps=electrolyte.epsreg)
 
 function rlog(x;eps=1.0e-20)
     if x<eps

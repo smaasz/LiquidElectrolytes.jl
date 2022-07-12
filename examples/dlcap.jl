@@ -23,22 +23,19 @@ function bcondition(f,u,bnode,data)
 end
 
 
-function main(;voltages=-1:0.01:1,nref=0,scheme=:μex,logreg=1.0e-10,kwargs...)
+function main(;voltages=-1:0.01:1,nref=0,scheme=:μex,epsreg=1.0e-20,kwargs...)
     hmin=1.0e-1*nm*2.0^(-nref)
     hmax=1.0*nm*2.0^(-nref)
     L=20.0*nm
     X=geomspace(0,L,hmin,hmax)
 
     grid=simplexgrid(X)
-    celldata=HalfCellData(Γ_we=1, Γ_bulk=2;scheme,logreg)
+    celldata=HalfCellData(Γ_we=1, Γ_bulk=2;scheme,epsreg)
 
     cell=PNPSystem(grid;bcondition,celldata)
     check_allocs!(cell,false)
     molarities=[0.001,0.01,0.1,1]
 
-
-
-    
     vis=GridVisualizer(resolution=(500,300),legend=:rt,clear=true,xlabel="φ/V",ylabel="C_dl/(μF/cm^2)",Plotter=PyPlot)
     hmol=1/length(molarities)
     for imol=1:length(molarities)

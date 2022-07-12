@@ -36,11 +36,13 @@ end
 
 function dμ(βk, βl, electrolyte)
     if βk>βl
-        rlog(βk/βl)*(R*electrolyte.T)
+        rlog(βk/βl,electrolyte)*(R*electrolyte.T)
     else
-        -rlog(βl/βk)*(R*electrolyte.T)
+        -rlog(βl/βk,electrolyte)*(R*electrolyte.T)
     end
 end
+
+
 
 function sflux(ic,dϕ,ck,cl,βk,βl,bar_ck,bar_cl,electrolyte)
     bp, bm = fbernoulli_pm(electrolyte.Z[ic] * dϕ  + dμ(βk,βl,electrolyte) /(R*electrolyte.T))
@@ -53,8 +55,8 @@ function aflux(ic,dϕ,ck,cl,βk,βl,bar_ck,bar_cl,electrolyte)
 end
 
 function cflux(ic,dϕ,ck,cl,βk,βl,bar_ck,bar_cl,electrolyte)
-    lck = log(ck/bar_ck)*(R*electrolyte.T)
-    lcl = log(cl/bar_cl)*(R*electrolyte.T)
+    lck = rlog(ck/bar_ck,electrolyte)*(R*electrolyte.T)
+    lcl = rlog(cl/bar_cl,electrolyte)*(R*electrolyte.T)
     electrolyte.D[ic] * 0.5 * (ck + cl) * (lck - lcl +  dμ(βk,βl,electrolyte)  + electrolyte.z[ic]*F*dϕ)/(R*electrolyte.T)
 end
 
@@ -94,11 +96,12 @@ function pnpflux(f, u, edge, electrolyte)
     for ic = 1:nc
         f[ic]=0.0
         ck,cl=u[ic,1],u[ic,2]
+        V=0.0
         if bikerman
             Mrel=M[ic]/M0
             V=v[ic]+(κ[ic]-Mrel)*v0
-            βk = exp(V*pk/(R*T))*bar_ck^(Mrel-1.0)/c0k^Mrel
-            βl = exp(V*pl/(R*T))*bar_cl^(Mrel-1.0)/c0l^Mrel
+            βk = exp(V*pk/(R*T))*bar_ck^(Mrel-1.0)/(c0k^Mrel)
+            βl = exp(V*pl/(R*T))*bar_cl^(Mrel-1.0)/(c0l^Mrel)
         end
 
         if scheme==:μex
