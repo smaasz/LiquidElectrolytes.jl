@@ -58,7 +58,7 @@ $(TYPEDFIELDS)
     v0::Float64=1/(55.4*mol/dm^3)
 
    "Solvation numbers"
-    κ::Vector{Float64}=fill(0,nc)
+    κ::Vector{Float64}=fill(10.0,nc)
     
     "Molar volumes of ions"
     v::Vector{Float64}=fill(v0,nc)
@@ -189,7 +189,7 @@ end
 
 function c0(U::Array, electrolyte)
     c0 = similar(U[1,:])
-    c0 .= 1.0 / electrolyte.v0
+    c0 .= 1.0 / electrolyte.v0 + electrolyte.epsreg
     for ic = 1:electrolyte.nc
         c0 -= U[ic,:] .* vrel(ic,electrolyte)
     end

@@ -55,6 +55,7 @@ function main(;nref=0,
               epsreg=1.0e-20,
               scheme=:μex,
               xmax=0.5,
+              κ=10.0,
               kwargs...)
 
     defaults=(; max_round=3,
@@ -71,7 +72,7 @@ function main(;nref=0,
     
     grid=simplexgrid(X)
 
-    celldata=FE23Cell(;nc=4, z=[1,2,3,-2], neutralflag=neutral,κ=fill(0,4), Γ_we=1, Γ_bulk=2, R0=R0*mol/(cm^2*s),scheme,epsreg)
+    celldata=FE23Cell(;nc=4, z=[1,2,3,-2], neutralflag=neutral,κ=fill(κ,4), Γ_we=1, Γ_bulk=2, R0=R0*mol/(cm^2*s),scheme,epsreg)
 
     @unpack iϕ,ihplus,ife2,ife3,iso4, ip=celldata
     sc=1

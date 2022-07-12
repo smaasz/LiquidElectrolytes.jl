@@ -43,7 +43,7 @@ function halfcellbc(f,u,bnode,data)
 end
 
 
-function main(;voltages=-1:0.005:1,molarity=0.1,nref=0,neutral=false,scheme=:μex,epsreg=1.0e-20,kwargs...)
+function main(;voltages=-1:0.005:1,molarity=0.1,nref=0,κ=10.0,neutral=false,scheme=:μex,epsreg=1.0e-20,kwargs...)
     defaults=(; max_round=3,tol_round=1.0e-10, verbose=false, tol_relative=1.0e-7,tol_mono=1.0e-10)
     kwargs=merge(defaults, kwargs) 
     
@@ -55,7 +55,7 @@ function main(;voltages=-1:0.005:1,molarity=0.1,nref=0,neutral=false,scheme=:μe
     grid=simplexgrid(X)
     
     
-    celldata=ORRCell(;nc=3, z=[1,-2,0], κ=fill(0,3), Γ_we=1, Γ_bulk=2,neutralflag=neutral,epsreg,scheme)
+    celldata=ORRCell(;nc=3, z=[1,-2,0], κ=fill(κ,3), Γ_we=1, Γ_bulk=2,neutralflag=neutral,epsreg,scheme)
 
     @unpack iϕ,ihplus,iso4,io2=celldata
 

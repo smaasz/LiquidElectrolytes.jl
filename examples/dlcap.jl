@@ -23,14 +23,14 @@ function bcondition(f,u,bnode,data)
 end
 
 
-function main(;voltages=-1:0.01:1,nref=0,scheme=:μex,epsreg=1.0e-20,kwargs...)
+function main(;voltages=-2:0.01:2,nref=0,scheme=:μex,epsreg=1.0e-20,κ=10.0,kwargs...)
     hmin=1.0e-1*nm*2.0^(-nref)
     hmax=1.0*nm*2.0^(-nref)
     L=20.0*nm
     X=geomspace(0,L,hmin,hmax)
 
     grid=simplexgrid(X)
-    celldata=HalfCellData(Γ_we=1, Γ_bulk=2;scheme,epsreg)
+    celldata=HalfCellData(Γ_we=1, Γ_bulk=2;scheme,epsreg,κ=fill(κ,2))
 
     cell=PNPSystem(grid;bcondition,celldata)
     check_allocs!(cell,false)
