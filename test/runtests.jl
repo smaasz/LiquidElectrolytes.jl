@@ -42,16 +42,16 @@ end
     X=geomspace(0,L,hmin,hmax)
 
     grid=simplexgrid(X)
-
-    acelldata=HalfCellData(Γ_we=1, Γ_bulk=2,logreg=1.0e-20, scheme=:act)
+    κ=[0,0]
+    acelldata=HalfCellData(;Γ_we=1, Γ_bulk=2,  scheme=:act,κ)
     acell=PNPSystem(grid;bcondition,celldata=acelldata)
     avolts,acaps=doublelayercap(acell;voltages=-1:0.01:1,molarity=0.1,δ=1.0e-4)
     
-    μcelldata=HalfCellData(Γ_we=1, Γ_bulk=2,logreg=1.0e-20, scheme=:μex)
+    μcelldata=HalfCellData(;Γ_we=1, Γ_bulk=2, scheme=:μex,κ)
     μcell=PNPSystem(grid;bcondition,celldata=μcelldata)
     μvolts,μcaps=doublelayercap(μcell;voltages=-1:0.01:1,molarity=0.1,δ=1.0e-4)
     
-    ccelldata=HalfCellData(Γ_we=1, Γ_bulk=2,logreg=1.0e-20, scheme=:cent)
+    ccelldata=HalfCellData(;Γ_we=1, Γ_bulk=2, scheme=:cent,κ)
     ccell=PNPSystem(grid;bcondition,celldata=ccelldata)
     cvolts,ccaps=doublelayercap(ccell;voltages=-1:0.01:1,molarity=0.1,δ=1.0e-4)
     
