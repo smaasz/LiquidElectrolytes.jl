@@ -21,8 +21,9 @@ end
 
 # ╔═╡ ef660f6f-9de3-4896-a65e-13c60df5de1e
 if isdefined(Main,:PlutoRunner)
-    using LessUnitful.CODATA2018: N_A,k_B,e,R,ε_0
-    using LessUnitful.Unitfactors: L, nm, V, K, Pa, GPa, μF, cm
+    using LessUnitful
+    @phconstants N_A k_B e R ε_0
+    @unitfactors L  nm  V  K  Pa  GPa  μF  cm
     const F=e*N_A
 end
 

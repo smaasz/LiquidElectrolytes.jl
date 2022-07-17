@@ -4,9 +4,10 @@ using LinearAlgebra
 using CompositeStructs,Parameters
 using Base: @kwdef
 using ExtendableGrids,VoronoiFVM
+using LessUnitful
 
-using LessUnitful.CODATA2018: N_A
-using LessUnitful.Unitfactors: dm,nm,mol
+@phconstants N_A
+@unitfactors dm nm mol
 
 @testset "cdl0" begin
     ely=ElectrolyteData(c_bulk=fill(0.01*mol/dm^3,2)                        )

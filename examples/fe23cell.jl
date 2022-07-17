@@ -1,4 +1,13 @@
 module fe23cell
+using Unitful
+using LessUnitful
+
+
+@phconstants N_A e R ε_0
+const F=N_A*e
+@unitfactors cm μF mol dm s mA A nm
+
+
 using ExtendableGrids,GridVisualize
 using VoronoiFVM
 using LiquidElectrolytes
@@ -7,10 +16,7 @@ using StaticArrays
 using CompositeStructs
 using StaticArrays
 
-using LessUnitful.CODATA2018: N_A,e,R,ε_0
-const F=N_A*e
 
-using LessUnitful.Unitfactors: nm,cm,μF,mol,dm,s,mA,A
 
 
 @composite @kwdef mutable struct FE23Cell <: AbstractElectrolyteData
@@ -63,7 +69,7 @@ function main(;nref=0,
               tol_relative=1.0e-5,
               tol_mono=1.0e-10)
     kwargs=merge(defaults, kwargs) 
-    
+    @show nm
     hmin=1.0e-1*nm*2.0^(-nref)
     hmax=1.0*nm*2.0^(-nref)
     L=20.0*nm

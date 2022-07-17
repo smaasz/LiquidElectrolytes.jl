@@ -4,11 +4,11 @@ using VoronoiFVM
 using LiquidElectrolytes
 using PyPlot,Colors, Parameters
 using StaticArrays
-
+using LessUnitful
 using CompositeStructs
 
-using LessUnitful.CODATA2018: R,N_A,e
-using LessUnitful.Unitfactors: nm,cm,μF,mol,dm,s
+@phconstants R N_A e
+@unitfactors nm cm μF mol dm s
 const F=N_A*e
 
 
