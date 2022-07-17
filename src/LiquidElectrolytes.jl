@@ -5,7 +5,7 @@ using Parameters
 using ProgressLogging
 using StaticArrays
 using LinearAlgebra
-using LessUnitful
+
 
 function showstruct(io::IO,this)
     for name in fieldnames(typeof(this))
@@ -14,8 +14,8 @@ function showstruct(io::IO,this)
 end
 
 
-@phconstants N_A e R ε_0 k_B
-@unitfactors K dm m s g nm Pa GPa V K L cm mA mol μF
+using LessUnitful.CODATA2018: N_A, e, R, ε_0, k_B
+using LessUnitful.Unitfactors: K,dm,m,s,g,nm,Pa,GPa,V,K,L,cm,mA,mol,μF
 const F=N_A*e
 
 

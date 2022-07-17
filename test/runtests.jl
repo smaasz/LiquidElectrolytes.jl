@@ -1,17 +1,15 @@
 using Test
 using LiquidElectrolytes
 using LinearAlgebra
-using LessUnitful
 using CompositeStructs,Parameters
 using Base: @kwdef
 using ExtendableGrids,VoronoiFVM
 
-@phconstants N_A
-const Mol=1
-@unitfactors dm nm
+using LessUnitful.CODATA2018: N_A
+using LessUnitful.Unitfactors: dm,nm,mol
 
 @testset "cdl0" begin
-    ely=ElectrolyteData(c_bulk=fill(0.01*Mol/dm^3,2)                        )
+    ely=ElectrolyteData(c_bulk=fill(0.01*mol/dm^3,2)                        )
     @test Cdl0(ely)≈ 0.22846691848825248
     edata=EquilibriumData()
     LiquidElectrolytes.set_molarity!(edata,0.01)

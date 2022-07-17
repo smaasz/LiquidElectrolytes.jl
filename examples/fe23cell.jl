@@ -2,16 +2,15 @@ module fe23cell
 using ExtendableGrids,GridVisualize
 using VoronoiFVM
 using LiquidElectrolytes
-using LessUnitful
 using PyPlot,Colors, Parameters
 using StaticArrays
 using CompositeStructs
 using StaticArrays
 
-@phconstants N_A e R ε_0
+using LessUnitful.CODATA2018: N_A,e,R,ε_0
 const F=N_A*e
 
-@unitfactors nm cm μF mol dm s mA A
+using LessUnitful.Unitfactors: nm,cm,μF,mol,dm,s,mA,A
 
 
 @composite @kwdef mutable struct FE23Cell <: AbstractElectrolyteData
@@ -61,7 +60,7 @@ function main(;nref=0,
     defaults=(; max_round=3,
               tol_round=1.0e-9,
               verbose=false,
-              tol_relative=1.0e-14,
+              tol_relative=1.0e-5,
               tol_mono=1.0e-10)
     kwargs=merge(defaults, kwargs) 
     

@@ -144,6 +144,8 @@ function voltagesweep(sys;voltages=-0.5:0.1:0.5,ispec=1,solver_kwargs...)
         @show u[2,1:5]
         @show u[3,1:5]
         @show u[4,1:5]
+        @show u[5,1:5]
+        @show u[6,1:5]
         @show chemical_potentials!(zeros(size(u,1)),u[:,1],data)
         c0,barc= c0_barc(u[:,1],data)
         @show c0/barc, u[1,1]/barc,u[2,1]/barc
@@ -160,10 +162,10 @@ function voltagesweep(sys;voltages=-0.5:0.1:0.5,ispec=1,solver_kwargs...)
             data.ϕ_we=ϕ
             try
                 solve!(sol, inival, sys;mynorm,myrnorm,control)
-                #control.Δt=1.0e-2
-                #control.Δu_opt=1.0e10
-                #tsol=solve(sys;inival,times=[0,10],control,mynorm,myrnorm)
-                #sol.=tsol[end]
+                # control.Δt=1.0e-6
+                # control.Δu_opt=1.0e10
+                # tsol=solve(sys;inival,times=[0,1.0e-3],control,mynorm,myrnorm)
+                # sol.=tsol[end]
             catch e
                 println(e)
                 show_error(sol)

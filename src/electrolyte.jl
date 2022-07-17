@@ -1,4 +1,3 @@
-
 """
 $(TYPEDEF)
 
@@ -106,7 +105,7 @@ Cdl0(data::AbstractElectrolyteData)=sqrt( 2*(data.ε)*ε_0*F^2*data.c_bulk[1]/(R
 
 Debye length.
 """
-ldebye(data)=sqrt( data.ε*ε_0*R*data.T/(F^2*data.c_bulk[1]))
+ldebye(data)=sqrt(data.ε*ε_0*R*data.T/(F^2*data.c_bulk[1]))
 
 
 
@@ -169,14 +168,16 @@ end
 """
     rlog(u, electrolyte)
 
-Regularized logarithm:
-
-```
-   rlog(u,electrolyte)= log(u+electrolyte.epsreg)
-```
+Calls rlog(u;eps=electrolyte.epsreg)
 """
 rlog(x,electrolyte::AbstractElectrolyteData)=rlog(x,eps=electrolyte.epsreg)
 
+"""
+    rlog(u; eps=1.0e-20)
+
+Regularized logarithm. Smooth linear continuation for `x<eps`.
+This means we can calculate a logarithm  of a small negative number.
+"""
 function rlog(x;eps=1.0e-20)
     if x<eps
         return log(eps)+(x-eps)/eps
@@ -185,8 +186,11 @@ function rlog(x;eps=1.0e-20)
     end
 end
 
+"""
+       c0(U::Array, electrolyte)
 
-
+Calculate solvent concentration from solution array.
+"""
 function c0(U::Array, electrolyte)
     c0 = similar(U[1,:])
     c0 .= 1.0 / electrolyte.v0 + electrolyte.epsreg
@@ -197,16 +201,14 @@ function c0(U::Array, electrolyte)
 end
 
 """
-    chemical_potentials!(μ,u,electrolyte::AbstractElectrolyteData)
+    chemical_potentials!(μ,u,electrolyte)
 
 Calculate chemical potentials from concentrations.
 
 Input:
-  -  `μ`: mutated, allocated memory for result
+  -  `μ`: memory for result (will be filled)
   -  `u`: concentrations
-Returns `μ0, μ`: chemical potential of solvent and chemical
-potentials of ions.
-
+Returns `μ0, μ`: chemical potential of solvent and chemical potentials of ions.
 """
 function chemical_potentials!(μ,u,data::AbstractElectrolyteData)
     c0,barc=c0_barc(u,data)
@@ -221,6 +223,23 @@ end
 
 
 """
+    rexp(x;trunc=500.0)
+
+Regularized exponential. Linear continuation for `x>trunc`,  
+returns 1/rexp(-x) for `x<trunc`.
+"""
+function rexp(x;trunc=500.0)
+    if x<-trunc
+        1.0/rexp(-x;trunc)
+    elseif x<=trunc
+        exp(x)
+    else
+        exp(trunc)*(x-trunc+1)
+    end
+end
+
+
+"""
     rrate(R0,β,A)
 
 Thermodynamic reaction rate expression
@@ -228,7 +247,7 @@ Thermodynamic reaction rate expression
 
     rrate(R0,β,A)=R0*(exp(-β*A) - exp((1-β)*A))
 """
-rrate(R0,β,A)=R0*(exp(-β*A) - exp((1-β)*A))
+rrate(R0,β,A)=R0*(rexp(-β*A) - rexp((1-β)*A))
 
 """
     wnorm(u,w,p)

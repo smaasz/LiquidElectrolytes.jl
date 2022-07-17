@@ -13,6 +13,7 @@ AbstractElectrolyteData
 Cdl0(::ElectrolyteData)
 ldebye(::ElectrolyteData)
 chemical_potentials!
+LiquidElectrolytes.c0
 rrate
 ``` 
 
@@ -22,6 +23,7 @@ LiquidElectrolytes.charge
 LiquidElectrolytes.vrel
 LiquidElectrolytes.c0_barc
 LiquidElectrolytes.rlog
+LiquidElectrolytes.rexp
 LiquidElectrolytes.wnorm
 ```
 

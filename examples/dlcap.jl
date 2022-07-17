@@ -3,12 +3,12 @@ using Base: @kwdef
 using Parameters
 using VoronoiFVM,ExtendableGrids,GridVisualize
 using LiquidElectrolytes
-using LessUnitful
+
 using CompositeStructs,Parameters
 using PyPlot,Colors
 
 
-@unitfactors nm cm μF
+using LessUnitful.Unitfactors: nm,cm,μF
 
 @composite @kwdef mutable struct HalfCellData <: AbstractElectrolyteData
     ElectrolyteData...

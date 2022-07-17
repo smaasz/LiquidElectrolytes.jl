@@ -44,6 +44,16 @@ end
 
 
 
+"""
+ Sedan flux
+
+ Appearantly first described by Yu, Zhiping  and Dutton, Robert, SEDAN III, www-tcad.stanford.edu/tcad/programs/sedan3.html
+
+ see also the 198? Fortran code available via
+  https://web.archive.org/web/20210518233152/http://www-tcad.stanford.edu/tcad/programs/oldftpable.html
+
+Verification calculation is in the paper.
+"""
 function sflux(ic,dϕ,ck,cl,βk,βl,bar_ck,bar_cl,electrolyte)
     bp, bm = fbernoulli_pm(electrolyte.Z[ic] * dϕ  + dμ(βk,βl,electrolyte) /(R*electrolyte.T))
     electrolyte.D[ic] * (bm*ck - bp*cl)
@@ -61,16 +71,6 @@ function cflux(ic,dϕ,ck,cl,βk,βl,bar_ck,bar_cl,electrolyte)
 end
 
 
-"""
- Sedan flux
-
- Appearantly first described by Yu, Zhiping  and Dutton, Robert, SEDAN III, www-tcad.stanford.edu/tcad/programs/sedan3.html
-
- see also the 198? Fortran code available via
-  https://web.archive.org/web/20210518233152/http://www-tcad.stanford.edu/tcad/programs/oldftpable.html
-
-Verification calculation is in the paper.
-"""
 function pnpflux(f, u, edge, electrolyte)
     iϕ = electrolyte.iϕ # index of potential
     ip = electrolyte.ip
@@ -88,14 +88,14 @@ function pnpflux(f, u, edge, electrolyte)
 
 
     f[iϕ]=ε*ε_0*dϕ*!neutralflag
-    f[ip]=dp +(qk+ql)*dϕ/2
+    f[ip]=dp + (qk+ql)*dϕ/2
 
     βk,βl=1.0,1.0
     bikerman=!iszero(v)
 
     for ic = 1:nc
         f[ic]=0.0
-        ck,cl=u[ic,1],u[ic,2]
+        ck,cl=u[ic,1]+electrolyte.epsreg,u[ic,2]+electrolyte.epsreg
         V=0.0
         if bikerman
             Mrel=M[ic]/M0
@@ -119,7 +119,18 @@ end
 
 
 
+"""
+    PNPSystem(grid;
+             celldata=ElectrolyteData(),
+             bcondition=default_bcondition,
+             kwargs...)
 
+Create VoronoiFVM system. Input:
+- `grid`: discretization grid
+- `celldata`: composite struct containing electrolyte data
+- `bcondition`: boundary condition
+- `kwargs`: Keyword arguments of VoronoiFVM.System
+"""
 function PNPSystem(grid;celldata=ElectrolyteData(),bcondition=default_bcondition,kwargs...)
     sys=VoronoiFVM.System(grid;
                           data=celldata,
@@ -132,8 +143,18 @@ function PNPSystem(grid;celldata=ElectrolyteData(),bcondition=default_bcondition
                           )
 end
 
+"""
+    electrolytedata(sys)
+Extract electrolyte data from system.
+"""
 electrolytedata(sys)=sys.physics.data
 
+
+"""
+    pnpunknowns(sys)
+
+Return vector of unknowns initialized with bulk data.
+"""
 function pnpunknowns(sys)
     @unpack iϕ,ip,nc,c_bulk=electrolytedata(sys)
     u=unknowns(sys)
