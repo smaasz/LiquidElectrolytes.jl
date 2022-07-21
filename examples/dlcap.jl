@@ -1,10 +1,10 @@
 module dlcap
+using LessUnitful
+using Unitful
 using Base: @kwdef
 using Parameters
 using VoronoiFVM,ExtendableGrids,GridVisualize
 using LiquidElectrolytes
-using LessUnitful
-using Unitful
 using CompositeStructs,Parameters
 using PyPlot,Colors
 
@@ -32,7 +32,6 @@ function main(;voltages=-2:0.01:2,nref=0,scheme=:μex,epsreg=1.0e-20,κ=10.0,kwa
     grid=simplexgrid(X)
     celldata=HalfCellData(Γ_we=1, Γ_bulk=2;scheme,epsreg,κ=fill(κ,2),c_bulk=fill(0.01M,2))
     
-
     cell=PNPSystem(grid;bcondition,celldata)
     check_allocs!(cell,false)
     molarities=[0.001,0.01,0.1,1]

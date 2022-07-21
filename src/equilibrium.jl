@@ -65,7 +65,7 @@ L_{Debye}=\sqrt{ \frac{(1+χ)ε_0k_BT}{e^2n_E}}
 """
 
 # ╔═╡ 00e536dc-34aa-4a1a-93de-4eb3f5e0a348
-L_Debye(data)=sqrt( (1+data.χ)*data.ε_0*data.kT/(ufac"e"^2*data.n_E[1]) );
+L_Debye(data)=sqrt( (1+data.χ)*data.ε_0*data.kT/(ph"e"^2*data.n_E[1]) );
 
 # ╔═╡ f3049938-2637-401d-9411-4d7be07c19ca
 md"""
@@ -273,7 +273,7 @@ function derived(κ,v0,n_E,T)
 	end
 	y_E=n_E/n_E_all
 	y0_E=(1/v0)/n_E_all
-	U_T=ufac"k_B"*T/ufac"e"
+	U_T=ph"k_B"*T/ph"e"
 	(;v,y_E,y0_E,U_T)
 end;
 
@@ -281,21 +281,21 @@ end;
 @with_kw mutable struct EquilibriumData
 	N::Int64         = 2                     # number of ionic species
 	T::Float64       = 298.15*ufac"K"        # temperature
-	kT::Float64       = ufac"k_B"*T             # temperature
+	kT::Float64       = ph"k_B"*T             # temperature
 	p_ref::Float64   = 1.0e5*ufac"Pa"        # referece pressure
 	pscale::Float64  = 1.0*ufac"GPa"         # pressure scaling nparameter
 	E_ref::Float64   = 0.0*ufac"V"           # reference voltage
-	n0_ref::Float64  = 55.508*ufac"N_A/dm^3"  # solvent molarity
+	n0_ref::Float64  = 55.508*ph"N_A"/ufac"dm^3"  # solvent molarity
  	v0::Float64      = 1/n0_ref              # solvent molecule volume
 	χ::Float64       = 15                    # dielectric susceptibility 
 	z::Vector{Int}   = [-1,1]                # ion charge numbers
 	κ::Vector{Int}   = [10,10]               # ion solvation numbers
-	molarity::Float64 = 0.1*ufac"N_A/dm^3"
+	molarity::Float64 = 0.1*ph"N_A"/ufac"dm^3"
 	n_E::Vector{Float64} = [molarity,molarity]  # bulk ion number densities
 	μ_e::Vector{Float64} = [0.0]             # grain facet electron chemical potential
 
-        e::Float64 = ufac"e"
-        ε_0::Float64 = ufac"ε_0"
+        e::Float64 = ph"e"
+        ε_0::Float64 = ph"ε_0"
     
 	v::Vector{Float64}  = derived(κ,v0,n_E,T).v   # ion volumes
 	y_E::Vector{Float64} = derived(κ,v0,n_E,T).y_E # bulk ion mole fractions
@@ -307,11 +307,11 @@ end
 EquilibriumData()
 
 # ╔═╡ 1065b3e0-60bf-497c-b7fb-c5a065737f77
-L_Debye(EquilibriumData(molarity=0.01ufac"N_A/dm^3"))/ufac"nm"
+L_Debye(EquilibriumData(molarity=0.01ph"N_A"/ufac"dm^3"))/ufac"nm"
 
 # ╔═╡ 5d6340c4-2ddd-429b-a60b-3de5570a7398
 function set_molarity!(data::EquilibriumData,M_E)	
-    n_E=M_E*ufac"N_A/dm^3"
+    n_E=M_E*ph"N_A"/ufac"dm^3"
     data.molarity=n_E
     data.n_E=[n_E,n_E]
 end
@@ -319,7 +319,7 @@ end
 
 
 # ╔═╡ 1d22b09e-99c1-4026-9505-07bdffc98582
-Cdl0(data::EquilibriumData)=sqrt( 2*(1+data.χ)*ufac"ε_0"*ufac"e"^2*data.n_E[1]/(ufac"k_B"*data.T));
+Cdl0(data::EquilibriumData)=sqrt( 2*(1+data.χ)*ph"ε_0"*ph"e"^2*data.n_E[1]/(ph"k_B"*data.T));
 
 # ╔═╡ fe704fb4-d07c-4591-b834-d6cf2f4f7075
 let

@@ -54,7 +54,7 @@ end
 function main(;nref=0,
               compare=false,
               neutral=false,
-              voltages=-1:0.005:1,
+              voltages=(-1:0.005:1)*ufac"V",
               dlcap=false,
               R0=1.0e-6,
               epsreg=1.0e-20,
@@ -69,7 +69,6 @@ function main(;nref=0,
               tol_relative=1.0e-5,
               tol_mono=1.0e-10)
     kwargs=merge(defaults, kwargs) 
-    @show nm
     hmin=1.0e-1*nm*2.0^(-nref)
     hmax=1.0*nm*2.0^(-nref)
     L=20.0*nm
@@ -95,19 +94,13 @@ function main(;nref=0,
 
     # Compare electroneutral and double layer cases
     if compare
+
         celldata.neutralflag=false
         volts,currs, sols=voltagesweep(cell;voltages,ispec=ife2,kwargs...)
-        
         tsol=VoronoiFVM.TransientSolution(sols,volts)
-        
-        for it=1:length(tsol.t)
-            tsol.u[it][ife2,:]/=mol/dm^3
-            tsol.u[it][ife3,:]/=mol/dm^3
-        end
         
         celldata.neutralflag=true
         nvolts,ncurrs, sols=voltagesweep(cell;voltages,ispec=ife2,kwargs...)
-        
         ntsol=VoronoiFVM.TransientSolution(sols,volts)
         
         vis=GridVisualizer(resolution=(600,400),Plotter=PyPlot,clear=true,legend=:lt,xlabel="Δϕ/V",ylabel="I/(A/m^2)")

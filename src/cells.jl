@@ -111,9 +111,10 @@ end
 
 
 
-function voltagesweep(sys;voltages=-0.5:0.1:0.5,ispec=1,solver_kwargs...)
+function voltagesweep(sys;voltages=(-0.5:0.1:0.5)*ufac"V",ispec=1,solver_kwargs...)
     ranges=splitz(voltages)
-
+    F=ph"N_A*e"
+    
     factory=VoronoiFVM.TestFunctionFactory(sys)
     data=sys.physics.data
     
@@ -174,11 +175,11 @@ function voltagesweep(sys;voltages=-0.5:0.1:0.5,ispec=1,solver_kwargs...)
             I=-integrate(sys,sys.physics.breaction,sol; boundary=true)[:,data.Γ_we]
             if range[end]>range[1]
                 push!(vplus, ϕ)
-                push!(iplus, I[ispec]*F/(mA/cm^2))
+                push!(iplus, I[ispec]*F)
                 push!(splus, copy(sol))
             else
                 push!(vminus, ϕ)
-                push!(iminus, I[ispec]*F/(mA/cm^2))
+                push!(iminus, I[ispec]*F)
                 push!(sminus, copy(sol))
             end
             ϕprogress +=1

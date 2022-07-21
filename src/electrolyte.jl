@@ -39,10 +39,10 @@ $(TYPEDFIELDS)
     z::Vector{Int}=[ (-1)^(i-1) for i=1:nc]
     
     "RT"
-    RT::Float64=ufac"R"*T
+    RT::Float64=ph"R"*T
     
     "Faraday constant"
-    F::Float64=ufac"N_A*e"
+    F::Float64=ph"N_A*e"
 
     "Bulk ion concentrations"
     c_bulk::Vector{Float64}=fill(0.1*ufac"M",nc)
@@ -69,7 +69,7 @@ $(TYPEDFIELDS)
     ε::Float64=78.49
 
     "Dielectric permittivity of vacuum"
-    ε_0::Float64=ufac"ε_0"
+    ε_0::Float64=ufac"ε0"
     
     "Pressure scaling factor"
     pscale::Float64=1.0e9
@@ -112,7 +112,7 @@ end
 
 Debye length.
 """
-ldebye(data)=sqrt(data.ε*data.ε0*data.RT/(data.F^2*data.c_bulk[1]))
+ldebye(data)=sqrt(data.ε*data.ε_0*data.RT/(data.F^2*data.c_bulk[1]))
 
 
 

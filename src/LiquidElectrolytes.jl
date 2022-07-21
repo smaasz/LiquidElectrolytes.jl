@@ -15,8 +15,6 @@ function showstruct(io::IO,this)
 end
 
 
-
-
 include("electrolyte.jl")
 export ElectrolyteData, AbstractElectrolyteData
 export Cdl0,chemical_potentials!, rrate,ldebye
