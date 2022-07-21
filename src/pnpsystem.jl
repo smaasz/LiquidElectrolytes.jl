@@ -36,9 +36,9 @@ end
 
 function dμ(βk, βl, electrolyte)
     if βk>βl
-        rlog(βk/βl,electrolyte)*(R*electrolyte.T)
+        rlog(βk/βl,electrolyte)*(electrolyte.RT)
     else
-        -rlog(βl/βk,electrolyte)*(R*electrolyte.T)
+        -rlog(βl/βk,electrolyte)*(electrolyte.RT)
     end
 end
 
@@ -55,26 +55,29 @@ end
 Verification calculation is in the paper.
 """
 function sflux(ic,dϕ,ck,cl,βk,βl,bar_ck,bar_cl,electrolyte)
-    bp, bm = fbernoulli_pm(electrolyte.Z[ic] * dϕ  + dμ(βk,βl,electrolyte) /(R*electrolyte.T))
-    electrolyte.D[ic] * (bm*ck - bp*cl)
+    @unpack D,z,F,RT= electrolyte
+    bp, bm = fbernoulli_pm(z[ic] * dϕ*F/RT  + dμ(βk,βl,electrolyte)/RT)
+    D[ic] * (bm*ck - bp*cl)
 end
 
 function aflux(ic,dϕ,ck,cl,βk,βl,bar_ck,bar_cl,electrolyte)
-    bp, bm = fbernoulli_pm(electrolyte.Z[ic] * dϕ)
-    electrolyte.D[ic] * (bm*ck*βk - bp*cl*βl)*(1/βk+1/βl)/2
+    @unpack D,z,F,RT= electrolyte
+    bp, bm = fbernoulli_pm(z[ic] * dϕ*F/RT)
+    D[ic] * (bm*ck*βk - bp*cl*βl)*(1/βk+1/βl)/2
 end
 
 function cflux(ic,dϕ,ck,cl,βk,βl,bar_ck,bar_cl,electrolyte)
-    lck = rlog(ck/bar_ck,electrolyte)*(R*electrolyte.T)
-    lcl = rlog(cl/bar_cl,electrolyte)*(R*electrolyte.T)
-    electrolyte.D[ic] * 0.5 * (ck + cl) * (lck - lcl +  dμ(βk,βl,electrolyte)  + electrolyte.z[ic]*F*dϕ)/(R*electrolyte.T)
+    @unpack D,z,F,RT= electrolyte
+    lck = rlog(ck/bar_ck,electrolyte)*RT
+    lcl = rlog(cl/bar_cl,electrolyte)*RT
+    D[ic] * 0.5 * (ck + cl) * (lck - lcl +  dμ(βk,βl,electrolyte)  + z[ic]*F*dϕ)/RT
 end
 
 
 function pnpflux(f, u, edge, electrolyte)
     iϕ = electrolyte.iϕ # index of potential
     ip = electrolyte.ip
-    @unpack ip, iϕ, v0, v, M0, M, κ,  ε, T, nc, neutralflag, pscale, scheme = electrolyte
+    @unpack ip, iϕ, v0, v, M0, M, κ, ε_0, ε, RT, nc, neutralflag, pscale, scheme = electrolyte
     
     pk,pl = u[ip,1]*pscale,u[ip,2]*pscale
     ϕk,ϕl = u[iϕ,1],u[iϕ,2]
@@ -100,8 +103,8 @@ function pnpflux(f, u, edge, electrolyte)
         if bikerman
             Mrel=M[ic]/M0
             V=v[ic]+(κ[ic]-Mrel)*v0
-            βk = exp(V*pk/(R*T))*bar_ck^(Mrel-1.0)/(c0k^Mrel)
-            βl = exp(V*pl/(R*T))*bar_cl^(Mrel-1.0)/(c0l^Mrel)
+            βk = exp(V*pk/(RT))*bar_ck^(Mrel-1.0)/(c0k^Mrel)
+            βl = exp(V*pl/(RT))*bar_cl^(Mrel-1.0)/(c0l^Mrel)
         end
 
         if scheme==:μex

@@ -25,18 +25,17 @@ function splitz(range::Vector)
 
 end
 
-function doublelayercap(sys;voltages=-1:0.1:1,δ=1.0e-4,molarity=0.1,solver_kwargs...)
+function doublelayercap(sys;voltages=(-1:0.1:1)*ufac"V",δ=1.0e-4,molarity=0.1*ufac"mol/dm^3",solver_kwargs...)
     ranges=splitz(voltages)
-
     vplus = zeros(0)
     cdlplus = zeros(0)
     vminus = zeros(0)
     cdlminus = zeros(0)
     data=electrolytedata(sys)
     data.ϕ_we=0
-    
-    data.c_bulk.=molarity*mol/dm^3
-    
+
+    data.c_bulk.=molarity
+
     iϕ=data.iϕ
     inival0 = solve(sys,inival=pnpunknowns(sys))
     inival=copy(inival0)

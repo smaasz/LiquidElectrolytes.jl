@@ -15,16 +15,14 @@ begin
 	using LinearAlgebra
 	using NLsolve
 	using Parameters
+        using LessUnitful
     end
     # If not run in Pluto, this file is included in MultECatJulia.jl as part of the package.
 end
 
 # ╔═╡ ef660f6f-9de3-4896-a65e-13c60df5de1e
 if isdefined(Main,:PlutoRunner)
-    using LessUnitful
-    @phconstants N_A k_B e R ε_0
-    @unitfactors L  nm  V  K  Pa  GPa  μF  cm
-    const F=e*N_A
+    
 end
 
 # ╔═╡ 4082c3d3-b728-4bcc-b480-cdee41d9ab99
@@ -67,7 +65,7 @@ L_{Debye}=\sqrt{ \frac{(1+χ)ε_0k_BT}{e^2n_E}}
 """
 
 # ╔═╡ 00e536dc-34aa-4a1a-93de-4eb3f5e0a348
-L_Debye(data)=sqrt( (1+data.χ)*ε_0*k_B*data.T/(e^2*data.n_E[1]) );
+L_Debye(data)=sqrt( (1+data.χ)*data.ε_0*data.kT/(ufac"e"^2*data.n_E[1]) );
 
 # ╔═╡ f3049938-2637-401d-9411-4d7be07c19ca
 md"""
@@ -125,9 +123,9 @@ Ion molar fractions
 
 # ╔═╡ 188f67d8-2ae8-474c-8e58-68b8b4fde02e
 function y_α(φ,p,α, data)
-	η_φ=data.z[α]*e*(φ-data.E_ref)
+	η_φ=data.z[α]*data.e*(φ-data.E_ref)
 	η_p=data.v[α]*(p*data.pscale-data.p_ref)
-	data.y_E[α]*exp( - (η_φ+η_p )/(k_B*data.T))
+	data.y_E[α]*exp( - (η_φ+η_p )/(data.kT))
 end;
 
 # ╔═╡ f70eed13-a6c2-4d54-9f30-113367afaf7d
@@ -138,7 +136,7 @@ Solvent molar fraction
 """
 
 # ╔═╡ d7531d5f-fc2d-42b2-9cf9-6a737b0f0f8d
-y0(p,data)=data.y0_E*exp( -data.v0*(p*data.pscale-data.p_ref)/(k_B*data.T));
+y0(p,data)=data.y0_E*exp( -data.v0*(p*data.pscale-data.p_ref)/(data.kT));
 
 # ╔═╡ f6f004a6-d71b-4813-a363-9f51dc37e42a
 md"""
@@ -159,7 +157,7 @@ VoronoiFVM flux function for left hand side of Poisson equation
 
 # ╔═╡ 0e2d20a1-5f26-4263-9a91-3b40b2c2996a
 function poisson_flux!(f,u,edge,data)
-	f[iφ]=(1.0+data.χ)*ε_0*(u[iφ,1]-u[iφ,2])
+	f[iφ]=(1.0+data.χ)*data.ε_0*(u[iφ,1]-u[iφ,2])
 end;
 
 # ╔═╡ 824c610b-6e5e-48a3-be37-19104f52d1d9
@@ -207,7 +205,7 @@ function spacecharge(φ,p,data)
 		sumyz+=data.z[α]*y
 		sumyv+=data.v[α]*y
 	end
-	e*sumyz/sumyv
+	data.e*sumyz/sumyv
 end
 
 # ╔═╡ b41838bb-3d5b-499c-9eb5-137c252ae366
@@ -275,27 +273,31 @@ function derived(κ,v0,n_E,T)
 	end
 	y_E=n_E/n_E_all
 	y0_E=(1/v0)/n_E_all
-	U_T=k_B*T/e
+	U_T=ufac"k_B"*T/ufac"e"
 	(;v,y_E,y0_E,U_T)
 end;
 
 # ╔═╡ 0d825f88-cd67-4368-90b3-29f316b72e6e
 @with_kw mutable struct EquilibriumData
 	N::Int64         = 2                     # number of ionic species
-	T::Float64       = 298.15*K  # temperature
-	p_ref::Float64   = 1.0e5*Pa  # referece pressure
-	pscale::Float64  = 1.0*GPa   # pressure scaling nparameter
-	E_ref::Float64   = 0.0*V     # reference voltage
-	n0_ref::Float64  = 55.508*N_A/L          # solvent molarity
+	T::Float64       = 298.15*ufac"K"        # temperature
+	kT::Float64       = ufac"k_B"*T             # temperature
+	p_ref::Float64   = 1.0e5*ufac"Pa"        # referece pressure
+	pscale::Float64  = 1.0*ufac"GPa"         # pressure scaling nparameter
+	E_ref::Float64   = 0.0*ufac"V"           # reference voltage
+	n0_ref::Float64  = 55.508*ufac"N_A/dm^3"  # solvent molarity
  	v0::Float64      = 1/n0_ref              # solvent molecule volume
 	χ::Float64       = 15                    # dielectric susceptibility 
 	z::Vector{Int}   = [-1,1]                # ion charge numbers
 	κ::Vector{Int}   = [10,10]               # ion solvation numbers
-	molarity::Float64 = 0.1*N_A/L
+	molarity::Float64 = 0.1*ufac"N_A/dm^3"
 	n_E::Vector{Float64} = [molarity,molarity]  # bulk ion number densities
 	μ_e::Vector{Float64} = [0.0]             # grain facet electron chemical potential
-	
-	v::Vector{Float64}  = derived(κ,v0,n_E,T).v # ion volumes
+
+        e::Float64 = ufac"e"
+        ε_0::Float64 = ufac"ε_0"
+    
+	v::Vector{Float64}  = derived(κ,v0,n_E,T).v   # ion volumes
 	y_E::Vector{Float64} = derived(κ,v0,n_E,T).y_E # bulk ion mole fractions
 	y0_E::Float64 = derived(κ,v0,n_E,T).y0_E       # bulk solvent mole fraction
 	U_T::Float64   =  derived(κ,v0,n_E,T).U_T     # Temperature voltage k_BT/e0
@@ -305,11 +307,11 @@ end
 EquilibriumData()
 
 # ╔═╡ 1065b3e0-60bf-497c-b7fb-c5a065737f77
-L_Debye(EquilibriumData(molarity=0.01N_A/L))/nm
+L_Debye(EquilibriumData(molarity=0.01ufac"N_A/dm^3"))/ufac"nm"
 
 # ╔═╡ 5d6340c4-2ddd-429b-a60b-3de5570a7398
 function set_molarity!(data::EquilibriumData,M_E)	
-    n_E=M_E*N_A/L
+    n_E=M_E*ufac"N_A/dm^3"
     data.molarity=n_E
     data.n_E=[n_E,n_E]
 end
@@ -317,14 +319,14 @@ end
 
 
 # ╔═╡ 1d22b09e-99c1-4026-9505-07bdffc98582
-Cdl0(data::EquilibriumData)=sqrt( 2*(1+data.χ)*ε_0*e^2*data.n_E[1]/(k_B*data.T));
+Cdl0(data::EquilibriumData)=sqrt( 2*(1+data.χ)*ufac"ε_0"*ufac"e"^2*data.n_E[1]/(ufac"k_B"*data.T));
 
 # ╔═╡ fe704fb4-d07c-4591-b834-d6cf2f4f7075
 let
     data=EquilibriumData()
     set_molarity!(data,0.01)
     data.χ=78.49-1
-    cdl0=Cdl0(data)/(μF/cm^2)
+    cdl0=Cdl0(data)/ufac"μF/cm^2"
     @assert cdl0 ≈ 22.846691848825248
 end
 
@@ -370,7 +372,7 @@ Calculate potential boundary value for each facet from applied voltage `E`.
 """
 
 # ╔═╡ 0c5ed337-9310-417d-a1f6-7d69dd8c377b
-φ_Σ(ifacet,data,E)=data.μ_e[ifacet]/e-(E-data.E_ref);
+φ_Σ(ifacet,data,E)=data.μ_e[ifacet]/data.e-(E-data.E_ref);
 
 # ╔═╡ 0bbd9482-d17d-4027-8eec-450807cff792
 md"""
@@ -499,10 +501,10 @@ Obtain ion  molarities (molar densities in mol/L)  from system
 """
 
 # ╔═╡ 2ee34d76-7238-46c2-94d1-a40d8b017af6
-calc_cmol(sol,sys)=calc_cnum(sol,sys)/(N_A/L);
+calc_cmol(sol,sys)=calc_cnum(sol,sys)/(ufac"M");
 
 # ╔═╡ 79cc671b-ef6e-42da-8641-61e43f221cb1
-calc_c0mol(sol,sys)=calc_c0num(sol,sys)/(N_A/L);
+calc_c0mol(sol,sys)=calc_c0num(sol,sys)/(ufac"M");
 
 # ╔═╡ f4b2f509-0769-4df7-956e-e8bfc9ccd89a
 md"""
@@ -665,7 +667,7 @@ function calc_Cdl(sys;vmax=2*V,molarity=1,nsteps=21, δV=1.0e-3*V,
     
     inival=unknowns(sys,inival=0)
     inival=solve(inival,sys,control=c)
-    vstep=vmax/(nsteps)
+    vstep=vmax/(nsteps-1)
     
     c.damp_initial=1
 

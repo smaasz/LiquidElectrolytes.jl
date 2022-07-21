@@ -7,16 +7,12 @@ using StaticArrays
 using LinearAlgebra
 using LessUnitful
 
+
 function showstruct(io::IO,this)
     for name in fieldnames(typeof(this))
         println(io,"$(lpad(name,20)) = $(getfield(this,name))")
     end
 end
-
-
-@phconstants N_A  e  R  ε_0  k_B
-@unitfactors K dm m s g nm Pa GPa V K L cm mA mol μF
-const F=N_A*e
 
 
 

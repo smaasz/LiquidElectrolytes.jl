@@ -10,12 +10,12 @@ using LessUnitful
 @unitfactors dm nm mol
 
 @testset "cdl0" begin
-    ely=ElectrolyteData(c_bulk=fill(0.01*mol/dm^3,2)                        )
+    ely=ElectrolyteData(c_bulk=fill(0.01*mol/dm^3,2).|>unitfactor)
     @test Cdl0(ely)≈ 0.22846691848825248
     edata=EquilibriumData()
     LiquidElectrolytes.set_molarity!(edata,0.01)
     edata.χ=78.49-1
-    @test Cdl0(edata)≈ 0.22846691848825248
+    @test Cdl0(edata)|>unitfactor≈ 0.22846691848825248
     @test Cdl0(EquilibriumData(ely))≈ 0.22846691848825248
 end
 
@@ -39,30 +39,33 @@ end
     hmax=1.0*nm
     L=20.0*nm
     X=geomspace(0,L,hmin,hmax)
-
+    molarity=0.1*ufac"M"
+    voltages=collect(-1:0.01:1)*ufac"V"
+    δ=1.0e-4
+    
     grid=simplexgrid(X)
     κ=[0,0]
     acelldata=HalfCellData(;Γ_we=1, Γ_bulk=2,  scheme=:act,κ)
     acell=PNPSystem(grid;bcondition,celldata=acelldata)
-    avolts,acaps=doublelayercap(acell;voltages=-1:0.01:1,molarity=0.1,δ=1.0e-4)
-    
+    avolts,acaps=doublelayercap(acell;voltages,molarity,δ)
+
     μcelldata=HalfCellData(;Γ_we=1, Γ_bulk=2, scheme=:μex,κ)
     μcell=PNPSystem(grid;bcondition,celldata=μcelldata)
-    μvolts,μcaps=doublelayercap(μcell;voltages=-1:0.01:1,molarity=0.1,δ=1.0e-4)
+    μvolts,μcaps=doublelayercap(μcell;voltages,molarity,δ)
     
     ccelldata=HalfCellData(;Γ_we=1, Γ_bulk=2, scheme=:cent,κ)
     ccell=PNPSystem(grid;bcondition,celldata=ccelldata)
-    cvolts,ccaps=doublelayercap(ccell;voltages=-1:0.01:1,molarity=0.1,δ=1.0e-4)
+    cvolts,ccaps=doublelayercap(ccell;voltages,molarity,δ)
     
     ecell=create_equilibrium_system(grid,EquilibriumData(acelldata))
-    evolts,ecaps=calc_Cdl(ecell,vmax=1,molarity=0.1,δV=1.0e-4,nsteps=101)
+    evolts,ecaps=calc_Cdl(ecell,vmax=1.0,molarity=0.1,δV=1.0e-4,nsteps=101)
 
     @show norm((acaps-ecaps)./ecaps)
     @show norm((acaps-μcaps)./acaps)
     @show norm((acaps-ccaps)./acaps)
 
     @test Cdl0(acelldata) ≈ Cdl0(EquilibriumData(acelldata))
-    @test isapprox(acaps,ecaps,rtol=1.0e-2)
+    @test isapprox(acaps,ecaps,rtol=1.0e-3)
     @test isapprox(acaps,μcaps,rtol=1.0e-10)
     @test isapprox(acaps,ccaps,rtol=1.0e-10)
 end    

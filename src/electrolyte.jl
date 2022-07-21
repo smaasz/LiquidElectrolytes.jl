@@ -24,13 +24,13 @@ $(TYPEDFIELDS)
     ip::Int=nc+2
 
     "Temperature"
-    T::Float64=(273.15+25)*K
+    T::Float64=(273.15+25)*ufac"K"
     
     "Mobility coefficient"
-    D::Vector{Float64}=fill(2.0e-9m^2/s,nc)
+    D::Vector{Float64}=fill(2.0e-9*ufac"m^2/s",nc) 
     
     "Molar weight of solvent"
-    M0::Float64=18.0153*g/mol
+    M0::Float64=18.0153*ufac"g/mol"
 
     "Molar weight of ions"
     M::Vector{Float64}=fill(M0,nc)
@@ -38,23 +38,26 @@ $(TYPEDFIELDS)
     "Charge numbers of ions"
     z::Vector{Int}=[ (-1)^(i-1) for i=1:nc]
     
-    "Charge numbers scaled by F/RT"
-    Z::Vector{Float64}=z.*F/(R*T)
+    "RT"
+    RT::Float64=ufac"R"*T
+    
+    "Faraday constant"
+    F::Float64=ufac"N_A*e"
 
     "Bulk ion concentrations"
-    c_bulk::Vector{Float64}=fill(0.1*mol/dm^3,nc)
+    c_bulk::Vector{Float64}=fill(0.1*ufac"M",nc)
 
     "Bulk voltage"
-    ϕ_bulk::Float64=0.0
+    ϕ_bulk::Float64=0.0*ufac"V"
     
     "Bulk pressure"
-    p_bulk::Float64=0.0
+    p_bulk::Float64=0.0*ufac"Pa"
 
     "Bulk boundary number"
     Γ_bulk::Int=1
     
     "Molar volume of solvent"
-    v0::Float64=1/(55.4*mol/dm^3)
+    v0::Float64=1/(55.4*ufac"M")
 
    "Solvation numbers"
     κ::Vector{Float64}=fill(10.0,nc)
@@ -65,6 +68,9 @@ $(TYPEDFIELDS)
     "Dielectric permittivity of solvent"
     ε::Float64=78.49
 
+    "Dielectric permittivity of vacuum"
+    ε_0::Float64=ufac"ε_0"
+    
     "Pressure scaling factor"
     pscale::Float64=1.0e9
 
@@ -86,8 +92,7 @@ Base.show(io::IO, this::AbstractElectrolyteData)=showstruct(io,this)
 Double layer capacitance at zero voltage for symmetric binary electrolyte.
 
 ### Example
-
-```jldoctest
+<```jldoctest
 using LessUnitful
 @unitfactors mol dm μF cm
 ely=ElectrolyteData(c_bulk=fill(0.01*mol/dm^3,2))
@@ -97,7 +102,9 @@ round(Cdl0(ely)/(μF/cm^2),digits=2)
 22.85
 ```
 """
-Cdl0(data::AbstractElectrolyteData)=sqrt( 2*(data.ε)*ε_0*F^2*data.c_bulk[1]/(R*data.T));
+function Cdl0(data::AbstractElectrolyteData)
+    sqrt( 2*(data.ε)*data.ε_0*data.F^2*data.c_bulk[1]/(data.RT))
+end
 
 
 """
@@ -105,7 +112,7 @@ Cdl0(data::AbstractElectrolyteData)=sqrt( 2*(data.ε)*ε_0*F^2*data.c_bulk[1]/(R
 
 Debye length.
 """
-ldebye(data)=sqrt(data.ε*ε_0*R*data.T/(F^2*data.c_bulk[1]))
+ldebye(data)=sqrt(data.ε*data.ε0*data.RT/(data.F^2*data.c_bulk[1]))
 
 
 
@@ -119,7 +126,7 @@ function charge(u,electrolyte::AbstractElectrolyteData)
     for ic=1:electrolyte.nc
         q+=u[ic] * electrolyte.z[ic]
     end
-    q*F
+    q*electrolyte.F
 end
 
 @doc raw"""
@@ -214,9 +221,9 @@ function chemical_potentials!(μ,u,data::AbstractElectrolyteData)
     c0,barc=c0_barc(u,data)
     p=u[data.ip]*data.pscale
     p_ref=0
-    μ0=rlog(c0/barc,data)*R*data.T+data.v0*(p-p_ref)
+    μ0=rlog(c0/barc,data)*data.RT+data.v0*(p-p_ref)
     for i=1:data.nc
-        μ[i]=rlog(u[i]/barc,data)*R*data.T+data.v[i]*(p-p_ref)
+        μ[i]=rlog(u[i]/barc,data)*data.RT+data.v[i]*(p-p_ref)
     end
     μ0,μ
 end
