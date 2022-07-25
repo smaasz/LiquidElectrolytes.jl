@@ -92,14 +92,13 @@ Base.show(io::IO, this::AbstractElectrolyteData)=showstruct(io,this)
 Double layer capacitance at zero voltage for symmetric binary electrolyte.
 
 ### Example
-<```jldoctest
+```jldoctest
 using LessUnitful
-@unitfactors mol dm μF cm
-ely=ElectrolyteData(c_bulk=fill(0.01*mol/dm^3,2))
-round(Cdl0(ely)/(μF/cm^2),digits=2)
+ely=ElectrolyteData(c_bulk=fill(0.01ufac"mol/dm^3"),2))
+round(Cdl0(ely)|>u"μF/cm^2",digits=2)
 # output
 
-22.85
+22.85 μF cm^-2
 ```
 """
 function Cdl0(data::AbstractElectrolyteData)
@@ -132,7 +131,7 @@ end
 @doc raw"""
 	vrel(ic,electrolyte)
 
-``v_{i,rel}=κ_i+\frac{v_i}{v_0}``
+Calculate relative (wrt. solvent) molar volume of i-th species ``v_{i,rel}=κ_i+\frac{v_i}{v_0}``.
 """
 vrel(ic,electrolyte)=electrolyte.v[ic]/electrolyte.v0+electrolyte.κ[ic]
 
@@ -183,7 +182,7 @@ rlog(x,electrolyte::AbstractElectrolyteData)=rlog(x,eps=electrolyte.epsreg)
     rlog(u; eps=1.0e-20)
 
 Regularized logarithm. Smooth linear continuation for `x<eps`.
-This means we can calculate a logarithm  of a small negative number.
+This means we can calculate a "logarithm"  of a small negative number.
 """
 function rlog(x;eps=1.0e-20)
     if x<eps
@@ -196,7 +195,7 @@ end
 """
        c0(U::Array, electrolyte)
 
-Calculate solvent concentration from solution array.
+Calculate vector of solvent concentrations from solution array.
 """
 function c0(U::Array, electrolyte)
     c0 = similar(U[1,:])
@@ -249,8 +248,7 @@ end
 """
     rrate(R0,β,A)
 
-Thermodynamic reaction rate expression
-
+Reaction rate expression
 
     rrate(R0,β,A)=R0*(exp(-β*A) - exp((1-β)*A))
 """

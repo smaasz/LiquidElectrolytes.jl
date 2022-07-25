@@ -29,7 +29,7 @@ include("cells.jl")
 export voltagesweep,doublelayercap
 
 
-include("equilibrium.jl")
+include("equilibrium-pluto.jl")
 export EquilibriumData,L_debye, apply_voltage!,set_molarity!,update_derived!
 export iφ,ip,iA,iC
 export create_equilibrium_system, solve_equilibrium_system,create_equilibrium_pp_system

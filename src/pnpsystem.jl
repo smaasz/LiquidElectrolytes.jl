@@ -1,4 +1,8 @@
+"""
+    pnpstorage(f, u, node, electrolyte)            
 
+Finite volume storage term
+"""
 function pnpstorage(f, u, node, electrolyte)
     f[electrolyte.iϕ] = zero(eltype(u))
     f[electrolyte.ip] = zero(eltype(u))
@@ -8,9 +12,11 @@ function pnpstorage(f, u, node, electrolyte)
 end
 
 
-charge(u,i,electrolyte) = @views charge(u[:,i], electrolyte)
+"""
+    pnpreaction(f, u, node, electrolyte)            
 
-
+Finite volume reaction term
+"""
 function pnpreaction(f, u, node, electrolyte)
     ## Charge density
     f[electrolyte.iϕ] = -charge(u,electrolyte)
@@ -20,9 +26,18 @@ function pnpreaction(f, u, node, electrolyte)
     end
 end
 
+"""
+    default_bcondition(f,u,bnode,electrolyte)
 
+Default boundary condition amounts to `nothing`
+"""
 default_bcondition(f,u,bnode,electrolyte)= nothing
 
+"""
+    default_bcondition(f,u,bnode,electrolyte)
+
+Bulk boundary condition for electrolyte: set potential, pressure and concentrations to bulk values.
+"""
 function bulkbc(f,u,bnode,data)
     @unpack iϕ,ip,nc,Γ_bulk,ϕ_bulk,p_bulk,c_bulk=data
     if bnode.region==Γ_bulk
@@ -34,7 +49,13 @@ function bulkbc(f,u,bnode,data)
     end
 end
 
-function dμ(βk, βl, electrolyte)
+
+"""
+     dμex(βk, βl, electrolyte)
+
+Calculate differences of excess chemical potentials from reciprocal activity coefficient
+"""
+function dμex(βk, βl, electrolyte)
     if βk>βl
         rlog(βk/βl,electrolyte)*(electrolyte.RT)
     else
@@ -45,35 +66,51 @@ end
 
 
 """
- Sedan flux
+    sflux(ic,dϕ,ck,cl,βk,βl,bar_ck,bar_cl,electrolyte)
 
- Appearantly first described by Yu, Zhiping  and Dutton, Robert, SEDAN III, www-tcad.stanford.edu/tcad/programs/sedan3.html
+ Sedan flux,  see Gaudeul/Fuhrmann 2022
+
+Appearantly first described by Yu, Zhiping  and Dutton, Robert, SEDAN III, www-tcad.stanford.edu/tcad/programs/sedan3.html
 
  see also the 198? Fortran code available via
-  https://web.archive.org/web/20210518233152/http://www-tcad.stanford.edu/tcad/programs/oldftpable.html
+ https://web.archive.org/web/20210518233152/http://www-tcad.stanford.edu/tcad/programs/oldftpable.html
 
 Verification calculation is in the paper.
 """
 function sflux(ic,dϕ,ck,cl,βk,βl,bar_ck,bar_cl,electrolyte)
     @unpack D,z,F,RT= electrolyte
-    bp, bm = fbernoulli_pm(z[ic] * dϕ*F/RT  + dμ(βk,βl,electrolyte)/RT)
+    bp, bm = fbernoulli_pm(z[ic] * dϕ*F/RT  + dμex(βk,βl,electrolyte)/RT)
     D[ic] * (bm*ck - bp*cl)
 end
 
+"""
+    aflux(ic,dϕ,ck,cl,βk,βl,bar_ck,bar_cl,electrolyte)
+
+Flux expression based on reciprocal activity coefficents, see Fuhrmann, CPC 2015
+"""
 function aflux(ic,dϕ,ck,cl,βk,βl,bar_ck,bar_cl,electrolyte)
     @unpack D,z,F,RT= electrolyte
     bp, bm = fbernoulli_pm(z[ic] * dϕ*F/RT)
     D[ic] * (bm*ck*βk - bp*cl*βl)*(1/βk+1/βl)/2
 end
 
+"""
+    aflux(ic,dϕ,ck,cl,βk,βl,bar_ck,bar_cl,electrolyte)
+
+Flux expression based on centrals differences, see Gaudeul/Fuhrmann 2022, Cances
+"""
 function cflux(ic,dϕ,ck,cl,βk,βl,bar_ck,bar_cl,electrolyte)
     @unpack D,z,F,RT= electrolyte
     lck = rlog(ck/bar_ck,electrolyte)*RT
     lcl = rlog(cl/bar_cl,electrolyte)*RT
-    D[ic] * 0.5 * (ck + cl) * (lck - lcl +  dμ(βk,βl,electrolyte)  + z[ic]*F*dϕ)/RT
+    D[ic] * 0.5 * (ck + cl) * (lck - lcl +  dμex(βk,βl,electrolyte)  + z[ic]*F*dϕ)/RT
 end
 
+"""
+    pnpflux(f, u, edge, electrolyte)
 
+Finite volume flux. It calls either [`sflux`](@ref), [`cflux`](@ref) or [`aflux`](@ref).
+"""
 function pnpflux(f, u, edge, electrolyte)
     iϕ = electrolyte.iϕ # index of potential
     ip = electrolyte.ip
@@ -82,7 +119,7 @@ function pnpflux(f, u, edge, electrolyte)
     pk,pl = u[ip,1]*pscale,u[ip,2]*pscale
     ϕk,ϕl = u[iϕ,1],u[iϕ,2]
 
-    qk,ql=charge(u,1,electrolyte),charge(u,2,electrolyte)
+    @views qk,ql=charge(u[:,1],electrolyte),charge(u[:,2],electrolyte)
     @views c0k,bar_ck=c0_barc(u[:,1], electrolyte)
     @views c0l,bar_cl=c0_barc(u[:,2], electrolyte)
     

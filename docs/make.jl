@@ -10,7 +10,9 @@ function mkdocs()
              authors = "J. Fuhrmann",
              repo="https://github.com/j-fu/LiquidElectrolytes.jl",
              pages=[
-                 "Home"=>"index.md"
+                 "Home"=>"index.md",
+                 "API"=>"api.md",
+                 "Internal API"=>"internal.md"
              ])
     if !isinteractive()
         deploydocs(repo = "github.com/j-fu/LiquidElectrolytes.jl.git", devbranch = "main")

@@ -1,3 +1,9 @@
+"""
+    splitz(range::AbstractRange)
+
+If range contains zero, split it into two parts, one with values <=0 and one with values >=0.
+Otherwise, return the range or its reverse, such that first value always is the one with the smallest absolute value.
+"""
 function splitz(range::AbstractRange)
     if range[1]>=0
         return [range]
@@ -8,6 +14,11 @@ function splitz(range::AbstractRange)
     end
 end
 
+"""
+    splitz(range::Vector)
+
+Version of [`splitz(range::AbstractRange)`](@ref) for vectors.
+"""
 function splitz(range::Vector)
     if range[1]>=0
         return [vcat([0.0],range)]
@@ -25,6 +36,15 @@ function splitz(range::Vector)
 
 end
 
+"""
+           doublelayercap(sys;voltages=(-1:0.1:1)*ufac"V",
+                              δ=1.0e-4,
+                              molarity=0.1*ufac"mol/dm^3",
+                              solver_kwargs...)
+
+Calculate double layer capacitances for voltages given in `voltages`.
+Returns vector of voltages   and vector of double layer capacitances.
+"""
 function doublelayercap(sys;voltages=(-1:0.1:1)*ufac"V",δ=1.0e-4,molarity=0.1*ufac"mol/dm^3",solver_kwargs...)
     ranges=splitz(voltages)
     vplus = zeros(0)
@@ -109,8 +129,15 @@ end
     
 
 
+"""
+    voltagesweep(sys;
+              voltages=(-0.5:0.1:0.5)*ufac"V",
+                                 ispec=1,
+                                 solver_kwargs...)
 
-
+Calculate working electrode current corresponding to rate for species `ispec` for each voltage in `voltages`.
+Returns vector of voltages   and vector of currents.
+"""
 function voltagesweep(sys;voltages=(-0.5:0.1:0.5)*ufac"V",ispec=1,solver_kwargs...)
     ranges=splitz(voltages)
     F=ph"N_A*e"

@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.4
+# v0.19.9
 
 using Markdown
 using InteractiveUtils
@@ -15,9 +15,8 @@ begin
 	using LinearAlgebra
 	using NLsolve
 	using Parameters
-        using LessUnitful
+    using LessUnitful
     end
-    # If not run in Pluto, this file is included in MultECatJulia.jl as part of the package.
 end
 
 # ╔═╡ ef660f6f-9de3-4896-a65e-13c60df5de1e
@@ -26,7 +25,10 @@ if isdefined(Main,:PlutoRunner)
 end
 
 # ╔═╡ 4082c3d3-b728-4bcc-b480-cdee41d9ab99
-isdefined(Main,:PlutoRunner) && TableOfContents(title="",depth=5)
+# ╠═╡ skip_as_script = true
+#=╠═╡
+TableOfContents(title="",depth=5)
+  ╠═╡ =#
 
 # ╔═╡ 920b7d84-56c6-4958-aed9-fc67ba0c43f6
 html"""
@@ -37,7 +39,12 @@ This code implements the model described in
 Müller, R., Fuhrmann, J., & Landstorfer, M. (2020). Modeling polycrystalline electrode-electrolyte interfaces: The differential capacitance. Journal of The Electrochemical Society, 167(10), 106512</a>
 <br>
 
+The code is part of the LiquidElectrolytes.jl package.
+
 Equation numbers refer to the paper.
+
+
+Concentrations are given in number densities, and calculations are done in mole fractions.
 """
 
 # ╔═╡ 87ac16f4-a4fc-4205-8fb9-e5459517e1b8
@@ -58,14 +65,7 @@ md"""
 # ╔═╡ 30c6a176-935b-423f-9447-86f78746322f
 md"""
 #### l_debye(data)
-Debye length
-```math
-L_{Debye}=\sqrt{ \frac{(1+χ)ε_0k_BT}{e^2n_E}}
-```
 """
-
-# ╔═╡ 00e536dc-34aa-4a1a-93de-4eb3f5e0a348
-L_Debye(data)=sqrt( (1+data.χ)*data.ε_0*data.kT/(ph"e"^2*data.n_E[1]) );
 
 # ╔═╡ f3049938-2637-401d-9411-4d7be07c19ca
 md"""
@@ -84,7 +84,7 @@ C_{dl,0}=\sqrt{\frac{2(1+χ) ε_0e^2 n_E}{k_BT}}
 
 # ╔═╡ 5a210961-19fc-40be-a5f6-033a80f1414d
 md"""
-Check with Bard/Faulkner: the value must be 22.8
+Check with Bard/Faulkner: the value must be $(22.8u"μF/cm^2")
 """
 
 # ╔═╡ 9b57f6ed-02f8-48ba-afa2-0766fe8c0c4c
@@ -278,6 +278,10 @@ function derived(κ,v0,n_E,T)
 end;
 
 # ╔═╡ 0d825f88-cd67-4368-90b3-29f316b72e6e
+"""
+	EquilibriumData
+Data structure containg data for equilibrum calculations
+"""
 @with_kw mutable struct EquilibriumData
 	N::Int64         = 2                     # number of ionic species
 	T::Float64       = 298.15*ufac"K"        # temperature
@@ -304,10 +308,27 @@ end;
 end
 
 # ╔═╡ 75d44285-113d-4f62-a704-a0ee038be1f2
+# ╠═╡ skip_as_script = true
+#=╠═╡
 EquilibriumData()
+  ╠═╡ =#
+
+# ╔═╡ 00e536dc-34aa-4a1a-93de-4eb3f5e0a348
+@doc raw"""
+     L_Debye(data::EquilibriumData)
+
+Debye length
+```math
+L_{Debye}=\sqrt{ \frac{(1+χ)ε_0k_BT}{e^2n_E}}
+```
+"""
+L_Debye(data::EquilibriumData)=sqrt( (1+data.χ)*data.ε_0*data.kT/(ph"e"^2*data.n_E[1]) )
 
 # ╔═╡ 1065b3e0-60bf-497c-b7fb-c5a065737f77
-L_Debye(EquilibriumData(molarity=0.01ph"N_A"/ufac"dm^3"))/ufac"nm"
+# ╠═╡ skip_as_script = true
+#=╠═╡
+L_Debye(EquilibriumData(molarity=0.01ph"N_A"/ufac"dm^3"))|>u"nm"
+  ╠═╡ =#
 
 # ╔═╡ 5d6340c4-2ddd-429b-a60b-3de5570a7398
 function set_molarity!(data::EquilibriumData,M_E)	
@@ -316,19 +337,20 @@ function set_molarity!(data::EquilibriumData,M_E)
     data.n_E=[n_E,n_E]
 end
 
-
-
 # ╔═╡ 1d22b09e-99c1-4026-9505-07bdffc98582
 Cdl0(data::EquilibriumData)=sqrt( 2*(1+data.χ)*ph"ε_0"*ph"e"^2*data.n_E[1]/(ph"k_B"*data.T));
 
 # ╔═╡ fe704fb4-d07c-4591-b834-d6cf2f4f7075
+# ╠═╡ skip_as_script = true
+#=╠═╡
 let
     data=EquilibriumData()
     set_molarity!(data,0.01)
     data.χ=78.49-1
-    cdl0=Cdl0(data)/ufac"μF/cm^2"
-    @assert cdl0 ≈ 22.846691848825248
+    cdl0=Cdl0(data)|>u"μF/cm^2"
+    @assert cdl0 ≈ 22.84669184882525u"μF/cm^2"
 end
+  ╠═╡ =#
 
 # ╔═╡ 3d9a47b8-2754-4a21-84a4-39cbeab12286
 function update_derived!(data)
@@ -703,11 +725,11 @@ end
 # ╔═╡ Cell order:
 # ╟─ef660f6f-9de3-4896-a65e-13c60df5de1e
 # ╠═60941eaa-1aea-11eb-1277-97b991548781
-# ╟─4082c3d3-b728-4bcc-b480-cdee41d9ab99
+# ╠═4082c3d3-b728-4bcc-b480-cdee41d9ab99
 # ╟─920b7d84-56c6-4958-aed9-fc67ba0c43f6
 # ╟─87ac16f4-a4fc-4205-8fb9-e5459517e1b8
 # ╟─7d77ad32-3df6-4243-8bad-b8df4126e6ea
-# ╟─4cabef42-d9f9-43fe-988e-7b54462dc775
+# ╠═4cabef42-d9f9-43fe-988e-7b54462dc775
 # ╠═0d825f88-cd67-4368-90b3-29f316b72e6e
 # ╠═75d44285-113d-4f62-a704-a0ee038be1f2
 # ╟─30c6a176-935b-423f-9447-86f78746322f
@@ -774,7 +796,7 @@ end
 # ╠═77f49da5-ffd2-4148-93a6-f45382ba6d91
 # ╟─7a607454-7b75-4313-920a-2dbdad258015
 # ╟─9cb8324c-896f-40f8-baa8-b7d47a93e9f5
-# ╠═003a5c0b-17c7-4407-ad23-21c0ac000fd4
+# ╟─003a5c0b-17c7-4407-ad23-21c0ac000fd4
 # ╠═e1c13f1e-5b67-464b-967b-25e3a93e33d9
 # ╠═64e47917-9c61-4d64-a6a1-c6e8c7b28c59
 # ╠═7bf3a130-3b47-428e-916f-4a0ec1237844
