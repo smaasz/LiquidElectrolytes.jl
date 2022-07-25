@@ -36,7 +36,7 @@ end
 
 
 function halfcellbc(f,u,bnode,data)
-    bulkbc(f,u,bnode,data)
+    bulkbcondition(f,u,bnode,data)
     if bnode.region==data.Γ_we
         @unpack R0,β,Δg,ihplus,ife2,ife3,iso4,iϕ,nc=data
         if !data.neutralflag
@@ -87,7 +87,7 @@ function main(;nref=0,
 
     @assert isapprox(celldata.c_bulk'*celldata.z,0, atol=1.0e-12)
     @show celldata
-    @show ldebye(celldata)
+    @show debyelength(celldata)|> u"nm"
     
     cell=PNPSystem(grid;bcondition=halfcellbc,celldata)
     check_allocs!(cell,false)
@@ -96,11 +96,11 @@ function main(;nref=0,
     if compare
 
         celldata.neutralflag=false
-        volts,currs, sols=voltagesweep(cell;voltages,ispec=ife2,kwargs...)
+        volts,currs, sols=ivsweep(cell;voltages,ispec=ife2,kwargs...)
         tsol=VoronoiFVM.TransientSolution(sols,volts)
         
         celldata.neutralflag=true
-        nvolts,ncurrs, sols=voltagesweep(cell;voltages,ispec=ife2,kwargs...)
+        nvolts,ncurrs, sols=ivsweep(cell;voltages,ispec=ife2,kwargs...)
         ntsol=VoronoiFVM.TransientSolution(sols,volts)
         
         vis=GridVisualizer(resolution=(600,400),Plotter=PyPlot,clear=true,legend=:lt,xlabel="Δϕ/V",ylabel="I/(A/m^2)")
@@ -117,7 +117,7 @@ function main(;nref=0,
         hmol=1/length(molarities)
         for imol=1:length(molarities)
 	    c=RGB(1-imol*hmol,0,imol*hmol)
-	    t=@elapsed volts,caps=doublelayercap(cell;voltages,molarity=molarities[imol],kwargs...)
+	    t=@elapsed volts,caps=dlcapsweep(cell;voltages,molarity=molarities[imol],kwargs...)
 	    scalarplot!(vis,volts,caps/(μF/cm^2),
 		        color=c,clear=false,label="$(molarities[imol])M",markershape=:none)
         end
@@ -126,7 +126,7 @@ function main(;nref=0,
     
     # Full caculation
 
-    volts,currs, sols=voltagesweep(cell;voltages,ispec=ife2,kwargs...)
+    volts,currs, sols=ivsweep(cell;voltages,ispec=ife2,kwargs...)
     tsol=VoronoiFVM.TransientSolution(sols,volts)
 
     for it=1:length(tsol.t)

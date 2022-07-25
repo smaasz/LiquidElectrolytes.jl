@@ -34,11 +34,11 @@ Default boundary condition amounts to `nothing`
 default_bcondition(f,u,bnode,electrolyte)= nothing
 
 """
-    default_bcondition(f,u,bnode,electrolyte)
+    bulkbcondition(f,u,bnode,electrolyte)
 
 Bulk boundary condition for electrolyte: set potential, pressure and concentrations to bulk values.
 """
-function bulkbc(f,u,bnode,data)
+function bulkbcondition(f,u,bnode,data)
     @unpack iϕ,ip,nc,Γ_bulk,ϕ_bulk,p_bulk,c_bulk=data
     if bnode.region==Γ_bulk
         boundary_dirichlet!(f,u,bnode,species=iϕ,region=Γ_bulk,value=ϕ_bulk)

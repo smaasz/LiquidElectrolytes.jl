@@ -8,33 +8,41 @@ using LinearAlgebra
 using LessUnitful
 
 
+function __init__()
+    LessUnitful.ensureSIBase()
+end
+
 function showstruct(io::IO,this)
+    myround(x; kwargs...)=round(x;kwargs...)
+    myround(s::Symbol; kwargs...)=s
+    myround(i::Int; kwargs...)=i
+    myround(b::Bool; kwargs...)=b
     for name in fieldnames(typeof(this))
-        println(io,"$(lpad(name,20)) = $(getfield(this,name))")
+        println(io,"$(lpad(name,20)) = $(myround.(getfield(this,name),sigdigits=5))")
     end
 end
 
 
 include("electrolyte.jl")
 export ElectrolyteData, AbstractElectrolyteData
-export Cdl0,chemical_potentials!, rrate,ldebye
-export showstruct, rlog, electrolyte
+export dlcap0,chemical_potentials!, rrate,debyelength
+export showstruct, rlog, electrolyte,solventconcentration
 
 include("pnpsystem.jl")
 export PNPSystem
-export pnpunknowns,electrolytedata,bulkbc
+export pnpunknowns,electrolytedata,bulkbcondition
 
 
 include("cells.jl")
-export voltagesweep,doublelayercap
+export ivsweep, dlcapsweep
 
 
 include("equilibrium-pluto.jl")
-export EquilibriumData,L_debye, apply_voltage!,set_molarity!,update_derived!
+export EquilibriumData,apply_voltage!,set_molarity!,update_derived!
 export iφ,ip,iA,iC
 export create_equilibrium_system, solve_equilibrium_system,create_equilibrium_pp_system
 export calc_φ,calc_p, calc_cmol,calc_c0mol,calc_cnum, calc_QBL,ysum
-export calc_Cdl,Cdl0, L_Debye
+export dlcapsweep_equi
 include("equilibrium-supplement.jl")
 
 

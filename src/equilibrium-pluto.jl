@@ -75,7 +75,7 @@ md"""
 # ╔═╡ a21545da-3b53-47af-b0c4-f253b37dc84f
 md"""
 
-#### Cdl0(data)
+#### dlcap0(data)
 Double layer capacitance at $φ=0$
 ```math
 C_{dl,0}=\sqrt{\frac{2(1+χ) ε_0e^2 n_E}{k_BT}}
@@ -315,19 +315,19 @@ EquilibriumData()
 
 # ╔═╡ 00e536dc-34aa-4a1a-93de-4eb3f5e0a348
 @doc raw"""
-     L_Debye(data::EquilibriumData)
+     debyelength(data::EquilibriumData)
 
 Debye length
 ```math
 L_{Debye}=\sqrt{ \frac{(1+χ)ε_0k_BT}{e^2n_E}}
 ```
 """
-L_Debye(data::EquilibriumData)=sqrt( (1+data.χ)*data.ε_0*data.kT/(ph"e"^2*data.n_E[1]) )
+debyelength(data::EquilibriumData)=sqrt( (1+data.χ)*data.ε_0*data.kT/(ph"e"^2*data.n_E[1]) )
 
 # ╔═╡ 1065b3e0-60bf-497c-b7fb-c5a065737f77
 # ╠═╡ skip_as_script = true
 #=╠═╡
-L_Debye(EquilibriumData(molarity=0.01ph"N_A"/ufac"dm^3"))|>u"nm"
+debyelength(EquilibriumData(molarity=0.01ph"N_A"/ufac"dm^3"))|>u"nm"
   ╠═╡ =#
 
 # ╔═╡ 5d6340c4-2ddd-429b-a60b-3de5570a7398
@@ -338,7 +338,7 @@ function set_molarity!(data::EquilibriumData,M_E)
 end
 
 # ╔═╡ 1d22b09e-99c1-4026-9505-07bdffc98582
-Cdl0(data::EquilibriumData)=sqrt( 2*(1+data.χ)*ph"ε_0"*ph"e"^2*data.n_E[1]/(ph"k_B"*data.T));
+dlcap0(data::EquilibriumData)=sqrt( 2*(1+data.χ)*ph"ε_0"*ph"e"^2*data.n_E[1]/(ph"k_B"*data.T));
 
 # ╔═╡ fe704fb4-d07c-4591-b834-d6cf2f4f7075
 # ╠═╡ skip_as_script = true
@@ -347,7 +347,7 @@ let
     data=EquilibriumData()
     set_molarity!(data,0.01)
     data.χ=78.49-1
-    cdl0=Cdl0(data)|>u"μF/cm^2"
+    cdl0=dlcap0(data)|>u"μF/cm^2"
     @assert cdl0 ≈ 22.84669184882525u"μF/cm^2"
 end
   ╠═╡ =#
@@ -564,7 +564,7 @@ md"""
 
 # ╔═╡ bb6ef288-373f-4944-bc85-37ab327dc4d5
 md"""
-#### calc_Cdl(sys)
+#### dlcapsweep(sys)
 
 Calculate double layer capacitance. Return vector of voltages `V` and vector of double layer capacitances `C`.
 """
@@ -671,8 +671,8 @@ end;
 calc_QBL(sol,sys)=VoronoiFVM.integrate(sys,spacecharge_and_ysum!,sol)[iφ,1]
 
 # ╔═╡ 77f49da5-ffd2-4148-93a6-f45382ba6d91
-function calc_Cdl(sys;vmax=2*V,molarity=1,nsteps=21, δV=1.0e-3*V,
-	          verbose=false,max_lureuse=0)
+function dlcapsweep_equi(sys;vmax=2*V,molarity=1,nsteps=21, δV=1.0e-3*V,
+    	            verbose=false,max_lureuse=0)
     data=sys.physics.data
     set_molarity!(data,molarity)
     update_derived!(data)

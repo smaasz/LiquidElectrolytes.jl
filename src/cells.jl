@@ -37,15 +37,20 @@ function splitz(range::Vector)
 end
 
 """
-           doublelayercap(sys;voltages=(-1:0.1:1)*ufac"V",
-                              δ=1.0e-4,
-                              molarity=0.1*ufac"mol/dm^3",
-                              solver_kwargs...)
+           dlcapweep(sys;voltages=(-1:0.1:1)*ufac"V",
+                                  δ=1.0e-4,
+                                  molarity=0.1*ufac"mol/dm^3",
+                                  solver_kwargs...)
 
 Calculate double layer capacitances for voltages given in `voltages`.
-Returns vector of voltages   and vector of double layer capacitances.
+Returns vector of voltages and vector of double layer capacitances.
+
+Assumptions:
+- Only one double layer in the system - close to working electrode
+- System data has entry for voltage at working electrode `ϕ_we`
+- 1D domain
 """
-function doublelayercap(sys;voltages=(-1:0.1:1)*ufac"V",δ=1.0e-4,molarity=0.1*ufac"mol/dm^3",solver_kwargs...)
+function dlcapsweep(sys;voltages=(-1:0.1:1)*ufac"V",δ=1.0e-4,molarity=0.1*ufac"mol/dm^3",solver_kwargs...)
     ranges=splitz(voltages)
     vplus = zeros(0)
     cdlplus = zeros(0)
@@ -91,7 +96,7 @@ function doublelayercap(sys;voltages=(-1:0.1:1)*ufac"V",δ=1.0e-4,molarity=0.1*u
                 show_error(inival,0)
                 success=false
             end
-#            @show extrema(sol[1,:])
+
             if !success
                 break
             end
@@ -130,15 +135,15 @@ end
 
 
 """
-    voltagesweep(sys;
-              voltages=(-0.5:0.1:0.5)*ufac"V",
+       ivsweep(sys;
+                  voltages=(-0.5:0.1:0.5)*ufac"V",
                                  ispec=1,
                                  solver_kwargs...)
 
 Calculate working electrode current corresponding to rate for species `ispec` for each voltage in `voltages`.
 Returns vector of voltages   and vector of currents.
 """
-function voltagesweep(sys;voltages=(-0.5:0.1:0.5)*ufac"V",ispec=1,solver_kwargs...)
+function ivsweep(sys;voltages=(-0.5:0.1:0.5)*ufac"V",ispec=1,solver_kwargs...)
     ranges=splitz(voltages)
     F=ph"N_A*e"
     

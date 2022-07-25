@@ -6,6 +6,7 @@ using PyPlot,Colors, Parameters
 using StaticArrays
 using LessUnitful
 using CompositeStructs
+using DocStringExtensions
 
 @phconstants R N_A e
 @unitfactors nm cm μF mol dm s
@@ -27,7 +28,7 @@ end
 
 
 function halfcellbc(f,u,bnode,data)
-    bulkbc(f,u,bnode,data)
+    bulkbcondition(f,u,bnode,data)
     if bnode.region==data.Γ_we
         @unpack R0,β,Δg,iϕ,ihplus,iso4,io2=data
         f.=0.0
@@ -42,7 +43,9 @@ function halfcellbc(f,u,bnode,data)
     end
 end
 
-
+"""
+    $(SIGNATURES)
+"""
 function main(;voltages=-1:0.005:1,molarity=0.1,nref=0,κ=10.0,neutral=false,scheme=:μex,epsreg=1.0e-20,kwargs...)
     defaults=(; max_round=3,tol_round=1.0e-10, verbose=false, tol_relative=1.0e-7,tol_mono=1.0e-10)
     kwargs=merge(defaults, kwargs) 
@@ -73,7 +76,7 @@ function main(;voltages=-1:0.005:1,molarity=0.1,nref=0,κ=10.0,neutral=false,sch
     
     vis=GridVisualizer(resolution=(1200,400),layout=(1,5),Plotter=PyPlot)
 
-    volts,currs, sols=voltagesweep(cell;voltages,ispec=io2,kwargs...)
+    volts,currs, sols=ivsweep(cell;voltages,ispec=io2,kwargs...)
     tsol=VoronoiFVM.TransientSolution(sols,volts)
 
     for it=1:length(tsol.t)

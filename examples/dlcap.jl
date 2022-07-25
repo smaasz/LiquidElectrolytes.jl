@@ -19,7 +19,7 @@ end
 function bcondition(f,u,bnode,data)
     @unpack iϕ,Γ_we,ϕ_we = data
     boundary_dirichlet!(f,u,bnode,species=iϕ,region=Γ_we,value=ϕ_we,penalty=1.0e3)
-    bulkbc(f,u,bnode,data)
+    bulkbcondition(f,u,bnode,data)
 end
 
 
@@ -40,10 +40,8 @@ function main(;voltages=-2:0.01:2,nref=0,scheme=:μex,epsreg=1.0e-20,κ=10.0,kwa
     hmol=1/length(molarities)
     for imol=1:length(molarities)
 	c=RGB(1-imol*hmol,0,imol*hmol)
-	t=@elapsed volts,caps=doublelayercap(cell;δ=1.0e-6,voltages=collect(voltages)*V,molarity=molarities[imol]*M,kwargs...)
-	cdl0=Cdl0(cell.physics.data)
-        @show caps[length(caps)÷2+1]/(μF/cm^2)
-        @show cdl0/(μF/cm^2)
+	t=@elapsed volts,caps=dlcapsweep(cell;δ=1.0e-6,voltages=collect(voltages)*V,molarity=molarities[imol]*M,kwargs...)
+	cdl0=dlcap0(cell.physics.data)
         scalarplot!(vis,volts/V,caps/(μF/cm^2),color=c,clear=false,label="$(molarities[imol])",markershape=:none)
 	scalarplot!(vis,[0],[cdl0]/(μF/cm^2),clear=false,markershape=:circle,label="")
     end
