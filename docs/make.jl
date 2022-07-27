@@ -1,4 +1,4 @@
-push!(LOAD_PATH,joinpath(pwd(),".."))
+push!(LOAD_PATH,joinpath(@__DIR__,".."))
 ENV["MPLBACKEND"]="agg" # hide
 using Documenter, LiquidElectrolytes, LessUnitful,Literate
 
