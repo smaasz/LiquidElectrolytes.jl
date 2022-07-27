@@ -33,21 +33,6 @@ Default boundary condition amounts to `nothing`
 """
 default_bcondition(f,u,bnode,electrolyte)= nothing
 
-"""
-    bulkbcondition(f,u,bnode,electrolyte)
-
-Bulk boundary condition for electrolyte: set potential, pressure and concentrations to bulk values.
-"""
-function bulkbcondition(f,u,bnode,data)
-    @unpack iϕ,ip,nc,Γ_bulk,ϕ_bulk,p_bulk,c_bulk=data
-    if bnode.region==Γ_bulk
-        boundary_dirichlet!(f,u,bnode,species=iϕ,region=Γ_bulk,value=ϕ_bulk)
-        boundary_dirichlet!(f,u,bnode,species=ip,region=Γ_bulk,value=p_bulk)
-        for ic=1:nc
-            boundary_dirichlet!(f,u,bnode,species=ic,region=Γ_bulk,value=data.c_bulk[ic])
-        end
-    end
-end
 
 
 """
@@ -114,7 +99,7 @@ Finite volume flux. It calls either [`sflux`](@ref), [`cflux`](@ref) or [`aflux`
 function pnpflux(f, u, edge, electrolyte)
     iϕ = electrolyte.iϕ # index of potential
     ip = electrolyte.ip
-    @unpack ip, iϕ, v0, v, M0, M, κ, ε_0, ε, RT, nc, neutralflag, pscale, scheme = electrolyte
+    @unpack ip, iϕ, v0, v, M0, M, κ, ε_0, ε, RT, nc, eneutral, pscale, scheme = electrolyte
     
     pk,pl = u[ip,1]*pscale,u[ip,2]*pscale
     ϕk,ϕl = u[iϕ,1],u[iϕ,2]
@@ -127,7 +112,7 @@ function pnpflux(f, u, edge, electrolyte)
     dp = pk-pl
 
 
-    f[iϕ]=ε*ε_0*dϕ*!neutralflag
+    f[iϕ]=ε*ε_0*dϕ*!eneutral
     f[ip]=dp + (qk+ql)*dϕ/2
 
     βk,βl=1.0,1.0

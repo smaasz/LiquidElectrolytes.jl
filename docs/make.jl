@@ -1,7 +1,53 @@
-using Documenter, LiquidElectrolytes, LessUnitful
+using Documenter, LiquidElectrolytes, LessUnitful,Literate
 
 
 function mkdocs()
+    example_jl_dir = joinpath(@__DIR__,"..","examples")
+    example_md_dir  = joinpath(@__DIR__,"src","examples")
+
+    rm(example_md_dir,force=true,recursive=true)
+    
+    function replace_source_url(input,source_url)
+        lines_in = collect(eachline(IOBuffer(input)))
+        lines_out=IOBuffer()
+        for line in lines_in
+            println(lines_out,replace(line,"SOURCE_URL" => source_url))
+        end
+        return String(take!(lines_out))
+    end
+
+    function replace_atat(input)
+        lines_in = collect(eachline(IOBuffer(input)))
+        lines_out=IOBuffer()
+        for line in lines_in
+            println(lines_out,replace(line,"@@" => "@"))
+        end
+        return String(take!(lines_out))
+    end
+    
+    for example_source in readdir(example_jl_dir)
+        base,ext=splitext(example_source)
+        if ext==".jl"
+            source_url="https://github.com/j-fu/LiquidElectrolytes.jl/raw/main/examples/"*example_source
+            preprocess(buffer)=replace_source_url(buffer,source_url)
+            Literate.markdown(joinpath(@__DIR__,"..","examples",example_source),
+                              example_md_dir;
+                              documenter=false,
+                              info=false,
+                              preprocess,
+                              postprocess=replace_atat)
+        end
+    end
+    
+    
+    #generated_examples=vcat(["runexamples.md"],joinpath.("examples",readdir(example_md_dir)))
+    generated_examples=joinpath.("examples",readdir(example_md_dir))
+    
+
+
+
+
+
     DocMeta.setdocmeta!(LiquidElectrolytes, :DocTestSetup, :(using LiquidElectrolytes); recursive=true)
     makedocs(sitename="LiquidElectrolytes.jl",
              modules = [LiquidElectrolytes],
@@ -12,7 +58,9 @@ function mkdocs()
              pages=[
                  "Home"=>"index.md",
                  "API"=>"api.md",
-                 "Internal API"=>"internal.md"
+                 "Internal API"=>"internal.md",
+                 "Examples" => generated_examples
+
              ])
     if !isinteractive()
         deploydocs(repo = "github.com/j-fu/LiquidElectrolytes.jl.git", devbranch = "main")

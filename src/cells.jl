@@ -36,6 +36,23 @@ function splitz(range::Vector)
 
 end
 
+
+"""
+    bulkbcondition(f,u,bnode,electrolyte)
+
+Bulk boundary condition for electrolyte: set potential, pressure and concentrations to bulk values.
+"""
+function bulkbcondition(f,u,bnode,data;region=data.Γ_bulk)
+    @unpack iϕ,ip,nc,ϕ_bulk,p_bulk,c_bulk=data
+    if bnode.region==region
+        boundary_dirichlet!(f,u,bnode;species=iϕ,region,value=ϕ_bulk)
+        boundary_dirichlet!(f,u,bnode;species=ip,region,value=p_bulk)
+        for ic=1:nc
+            boundary_dirichlet!(f,u,bnode;species=ic,region,value=data.c_bulk[ic])
+        end
+    end
+end
+
 """
            dlcapweep(sys;voltages=(-1:0.1:1)*ufac"V",
                                   δ=1.0e-4,
@@ -47,7 +64,6 @@ Returns vector of voltages and vector of double layer capacitances.
 
 Assumptions:
 - Only one double layer in the system - close to working electrode
-- System data has entry for voltage at working electrode `ϕ_we`
 - 1D domain
 """
 function dlcapsweep(sys;voltages=(-1:0.1:1)*ufac"V",δ=1.0e-4,molarity=0.1*ufac"mol/dm^3",solver_kwargs...)

@@ -22,13 +22,8 @@ end
 
 @testset "dlcap" begin
     
-    @composite @kwdef mutable struct HalfCellData<:AbstractElectrolyteData
-        ElectrolyteData...
-        Γ_we::Int=1
-        ϕ_we::Float64=0.0
-    end
     
-    function bcondition(f,u,bnode,data::HalfCellData)
+    function bcondition(f,u,bnode,data::ElectrolyteData)
         @unpack iϕ,Γ_we,ϕ_we = data
         boundary_dirichlet!(f,u,bnode,species=iϕ,region=Γ_we,value=ϕ_we)
         bulkbcondition(f,u,bnode,data)
@@ -45,15 +40,15 @@ end
     
     grid=simplexgrid(X)
     κ=[0,0]
-    acelldata=HalfCellData(;Γ_we=1, Γ_bulk=2,  scheme=:act,κ)
+    acelldata=ElectrolyteData(;Γ_we=1, Γ_bulk=2,  scheme=:act,κ)
     acell=PNPSystem(grid;bcondition,celldata=acelldata)
     avolts,acaps=dlcapsweep(acell;voltages,molarity,δ)
 
-    μcelldata=HalfCellData(;Γ_we=1, Γ_bulk=2, scheme=:μex,κ)
+    μcelldata=ElectrolyteData(;Γ_we=1, Γ_bulk=2, scheme=:μex,κ)
     μcell=PNPSystem(grid;bcondition,celldata=μcelldata)
     μvolts,μcaps=dlcapsweep(μcell;voltages,molarity,δ)
     
-    ccelldata=HalfCellData(;Γ_we=1, Γ_bulk=2, scheme=:cent,κ)
+    ccelldata=ElectrolyteData(;Γ_we=1, Γ_bulk=2, scheme=:cent,κ)
     ccell=PNPSystem(grid;bcondition,celldata=ccelldata)
     cvolts,ccaps=dlcapsweep(ccell;voltages,molarity,δ)
     

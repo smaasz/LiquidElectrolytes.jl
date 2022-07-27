@@ -9,7 +9,11 @@ abstract type AbstractElectrolyteData end
 """
 $(TYPEDEF)
 
-Data for electrolyte.
+Data for electrolyte. It is defined using [Parameters.jl](https://github.com/mauro3/Parameters.jl), therefore it
+has keyword constructors like
+```julia
+    ElectrolyteData(nc=3,z=[-1,2,1])
+```
 
 $(TYPEDFIELDS)
 """
@@ -54,7 +58,13 @@ $(TYPEDFIELDS)
     p_bulk::Float64=0.0*ufac"Pa"
 
     "Bulk boundary number"
-    Γ_bulk::Int=1
+    Γ_bulk::Int=2
+
+    "Working electrode voltage"
+    ϕ_we::Float64=0.0*ufac"V"
+    
+    "Working electrode  boundary number"
+    Γ_we::Int=1
     
     "Temperature"
     T::Float64=(273.15+25)*ufac"K"
@@ -74,11 +84,11 @@ $(TYPEDFIELDS)
     "Pressure scaling factor"
     pscale::Float64=1.0e9
     
-    "Electroneutrality switch"
-    neutralflag::Bool=false
+    "Local electroneutrality switch"
+    eneutral::Bool=false
     
     """
-    Flux caculation scheme.
+    [Flux caculation scheme](@id fluxes)
     This allows to choose between
     - `:μex` (default): excess chemical potential (SEDAN) scheme, see [`sflux`](@ref)
     - `:act` : scheme based on reciprocal activity coefficients, see [`aflux`](@ref)

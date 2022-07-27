@@ -20,12 +20,12 @@ rrate
 PNPSystem
 pnpunknowns
 electrolytedata
-LiquidElectrolytes.bulkbcondition
-LiquidElectrolytes.solventconcentration
+solventconcentration
 ```
 
 ## Standard calculations
 ```@docs
+bulkbcondition
 dlcapsweep
 ivsweep
 ```
