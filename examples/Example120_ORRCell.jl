@@ -86,7 +86,6 @@ function main(;voltages=-1:0.005:1,compare=false,molarity=0.1,nref=0,κ=10.0,ene
 
     ## Compare electroneutral and double layer cases
     if compare
-
         celldata.eneutral=false
 	volts,currs, sols=ivsweep(cell;voltages,ispec=io2,kwargs...)
 
@@ -99,8 +98,6 @@ function main(;voltages=-1:0.005:1,compare=false,molarity=0.1,nref=0,κ=10.0,ene
         return reveal(vis)
     end
 
-
-    
     vis=GridVisualizer(resolution=(1200,400),layout=(1,5),Plotter=PyPlot)
 
     volts,currs, sols=ivsweep(cell;voltages,ispec=io2,kwargs...)
@@ -122,9 +119,6 @@ function main(;voltages=-1:0.005:1,compare=false,molarity=0.1,nref=0,κ=10.0,ene
     scalarplot!(vis[1,4],cell,tsol;species=iϕ,aspect,xlimits,title="ϕ",colormap=:bwr)
     scalarplot!(vis[1,5],tsol[io2,1,:],volts,title="c_o2(0)",xlabel="O2",ylabel="V")
 
-#    Plots.plot(tsol.t,tsol[io2,1,:])
-   
-#    save(plotsdir("1DResults.pdf"),vis)
     reveal(vis)
 end
 
