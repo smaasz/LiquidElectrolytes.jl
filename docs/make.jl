@@ -32,7 +32,7 @@ function mkdocs()
             preprocess(buffer)=replace_source_url(buffer,source_url)
             Literate.markdown(joinpath(@__DIR__,"..","examples",example_source),
                               example_md_dir;
-                              documenter=false,
+                              documenter=true,
                               info=false,
                               preprocess,
                               postprocess=replace_atat)
