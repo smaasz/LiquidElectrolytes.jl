@@ -1,9 +1,4 @@
 #=
-```@meta
-Draft=true
-```
-
-
 # Fe redox half cell
 ([source code](SOURCE_URL))
 
@@ -161,3 +156,16 @@ function main(;nref=0,
 end
 
 end
+
+#=
+```@example Example110_Fe23Cell
+Example110_Fe23Cell.main()
+```
+=#
+
+
+#=
+```@example Example110_Fe23Cell
+Example110_Fe23Cell.main(compare=true)
+```
+=#

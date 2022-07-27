@@ -1,19 +1,14 @@
 #=
-```@meta
-Draft=true
-```
 # Double Layer Capacitance
 ([source code](SOURCE_URL))
 
 Calculation of double layer capacitance of a symmetric 1:1 electrolyte.
-
 
 Methods called:
 - [`ElectrolyteData`](@@ref)
 - [`dlcapsweep`](@@ref)
 - [`PNPSystem`](@@ref)
 =#
-
 module Example101_DLCap
 using LessUnitful
 using Unitful
@@ -100,4 +95,11 @@ function main(;voltages=-2:0.01:2,           ## Voltages/V
     reveal(vis)
 end
 
-end
+end 
+
+#=
+```@example Example101_DLCap
+Example101_DLCap.main()
+```
+=#
+

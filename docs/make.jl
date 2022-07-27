@@ -1,3 +1,5 @@
+push!(LOAD_PATH,joinpath(pwd(),".."))
+ENV["MPLBACKEND"]="agg" # hide
 using Documenter, LiquidElectrolytes, LessUnitful,Literate
 
 
@@ -24,11 +26,11 @@ function mkdocs()
         end
         return String(take!(lines_out))
     end
-    
+    wd=joinpath(pwd(),"..")
     for example_source in readdir(example_jl_dir)
         base,ext=splitext(example_source)
         if ext==".jl"
-            source_url="https://github.com/j-fu/LiquidElectrolytes.jl/raw/main/examples/"*example_source
+            source_url="https://github.com/j-fu/LiquidElectrolytes.jl/blob/main/examples/"*example_source
             preprocess(buffer)=replace_source_url(buffer,source_url)
             Literate.markdown(joinpath(@__DIR__,"..","examples",example_source),
                               example_md_dir;
@@ -54,7 +56,7 @@ function mkdocs()
              clean = false, 
              doctest = true,
              authors = "J. Fuhrmann",
-             repo="https://github.com/j-fu/LiquidElectrolytes.jl",
+             repo="https://github.com/j-fu/LiquidElectrolytes.jl/",
              pages=[
                  "Home"=>"index.md",
                  "API"=>"api.md",

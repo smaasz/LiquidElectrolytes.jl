@@ -1,6 +1,5 @@
 [deps]
 AbstractTrees = "1520ce14-60c1-5f80-bbc7-55ef81b5835c"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
-LessUnitful = "f29f6376-6e90-4d80-80c9-fb8ec61203d5"
 LiquidElectrolytes = "5a7dfd8c-b3af-4c8d-a082-d3a774d75e72"
 Literate = "98b081ad-f1c9-55d3-8b20-4c87d4299306"
