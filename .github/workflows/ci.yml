@@ -65,6 +65,8 @@ jobs:
             Pkg.Registry.add(RegistrySpec(url = "https://github.com/j-fu/PackageNursery"))
             Pkg.develop(PackageSpec(path=pwd()))
             Pkg.instantiate()'
+        env:
+          PYTHON: ""
       #  env:
       #    JULIA_PKG_SERVER: ""      
       # - run: |
