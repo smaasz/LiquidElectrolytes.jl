@@ -1,7 +1,7 @@
 name = "LiquidElectrolytes"
 uuid = "5a7dfd8c-b3af-4c8d-a082-d3a774d75e72"
 authors = ["Jürgen Fuhrmann <juergen-fuhrmann@web.de>"]
-version = "0.0.15"
+version = "0.0.16"
 
 [deps]
 CompositeStructs = "534720e6-2374-40c5-8712-bf9a2f1643c6"
@@ -31,3 +31,6 @@ Parameters = "0.12.3"
 ProgressLogging = "0.1.4"
 StaticArrays = "1.4.4"
 VoronoiFVM = "0.17"
+PhysicalConstants = "0.2"
+Unitful = "1"
+ForwardDiff= "0.10"
