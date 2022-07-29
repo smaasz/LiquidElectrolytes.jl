@@ -1,12 +1,11 @@
 module LiquidElectrolytes
 using VoronoiFVM,ExtendableGrids
 using DocStringExtensions
-using Parameters
 using ProgressLogging
 using StaticArrays
 using LinearAlgebra
 using LessUnitful
-
+using Base: @kwdef
 
 function __init__()
     LessUnitful.ensureSIBase()

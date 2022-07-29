@@ -21,10 +21,10 @@ module Example120_ORRCell
 using ExtendableGrids,GridVisualize
 using VoronoiFVM
 using LiquidElectrolytes
-using PyPlot,Colors, Parameters
+using PyPlot,Colors
 using StaticArrays
 using LessUnitful
-using DocStringExtensions
+
 
 
 
@@ -56,7 +56,7 @@ function main(;voltages=-1:0.005:1,compare=false,molarity=0.1,nref=0,κ=10.0,ene
 
     function halfcellbc(f,u,bnode,data)
         bulkbcondition(f,u,bnode,data)
-        @unpack iϕ,eneutral,ϕ_we,Γ_we,RT=data
+        (;iϕ,eneutral,ϕ_we,Γ_we,RT)=data
         if bnode.region==Γ_we
             f.=0.0
             if !data.eneutral
@@ -75,7 +75,7 @@ function main(;voltages=-1:0.005:1,compare=false,molarity=0.1,nref=0,κ=10.0,ene
     
     celldata=ElectrolyteData(;nc=3, z=[1,-2,0], κ=fill(κ,3), Γ_we=1, Γ_bulk=2,eneutral,scheme)
 
-    @unpack iϕ,c_bulk=celldata
+    (;iϕ,c_bulk)=celldata
 
     
     c_bulk[io2]=0.001*mol/dm^3

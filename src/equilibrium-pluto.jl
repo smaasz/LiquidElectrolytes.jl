@@ -14,8 +14,7 @@ begin
 	using ExtendableGrids
 	using LinearAlgebra
 	using NLsolve
-	using Parameters
-    using LessUnitful
+        using LessUnitful
     end
 end
 
@@ -282,7 +281,7 @@ end;
 	EquilibriumData
 Data structure containg data for equilibrum calculations
 """
-@with_kw mutable struct EquilibriumData
+@Base.kwdef mutable struct EquilibriumData
 	N::Int64         = 2                     # number of ionic species
 	T::Float64       = 298.15*ufac"K"        # temperature
 	kT::Float64       = ph"k_B"*T             # temperature
@@ -354,9 +353,8 @@ end
 
 # ╔═╡ 3d9a47b8-2754-4a21-84a4-39cbeab12286
 function update_derived!(data)
-@unpack κ,v0,n_E,T = data
-v,y_E,y0_E,U_T=derived(κ,v0,n_E,T)
-@pack! data=v,y_E,y0_E,U_T 
+(; κ,v0,n_E,T) = data
+data.v,data.y_E,data.y0_E,data.U_T=derived(κ,v0,n_E,T)
 end
 
 

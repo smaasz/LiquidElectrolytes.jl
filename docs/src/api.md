@@ -4,10 +4,20 @@ All physical quantities are assumed to be consistently represented through their
 built on top of [Unitful.jl](https://github.com/PainterQubits/Unitful.jl).
 
 ## Electrolyte data
+```@docs
+AbstractElectrolyteData
+ElectrolyteData
+```
+
+The default values for electrolyte data are those of an symmetric 0.1M aqueous binary electrolyte at 
+298.5K with solvation number κ=10, ion molar volumes similar to water molecules and
+diffusion coefficient 2.0e-9 ``m^2/s``. All values given in SI base units.
+```@example
+using LiquidElectrolytes
+ElectrolyteData()
+```
 
 ```@docs
-ElectrolyteData
-AbstractElectrolyteData
 dlcap0(::ElectrolyteData)
 debyelength(::ElectrolyteData)
 chemical_potentials!

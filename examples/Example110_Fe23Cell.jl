@@ -13,12 +13,11 @@ Methods called:
 =#
 
 module Example110_Fe23Cell
-using Unitful
 using LessUnitful
 using ExtendableGrids,GridVisualize
 using VoronoiFVM
 using LiquidElectrolytes
-using PyPlot,Colors, Parameters
+using PyPlot,Colors
 using StaticArrays
 
 
@@ -65,7 +64,7 @@ function main(;nref=0,
     iso4=4
 
     function halfcellbc(f,u,bnode,data)
-        @unpack iϕ,nc,Γ_we, Γ_bulk,ϕ_we,eneutral=data
+        (;iϕ,nc,Γ_we, Γ_bulk,ϕ_we,eneutral)=data
         bulkbcondition(f,u,bnode,data;region=Γ_bulk)
         if bnode.region==Γ_we
             if !data.eneutral
@@ -87,7 +86,7 @@ function main(;nref=0,
                              Γ_we=1,
                              Γ_bulk=2,
                              scheme)
-    @unpack iϕ,ip=celldata
+    (;iϕ,ip)=celldata
     
     celldata.c_bulk[ihplus]=1.0*mol/dm^3
     celldata.c_bulk[ife2]=0.1*mol/dm^3

@@ -63,7 +63,7 @@ Appearantly first described by Yu, Zhiping  and Dutton, Robert, SEDAN III, www-t
 Verification calculation is in the paper.
 """
 function sflux(ic,dϕ,ck,cl,βk,βl,bar_ck,bar_cl,electrolyte)
-    @unpack D,z,F,RT= electrolyte
+    (;D,z,F,RT) = electrolyte
     bp, bm = fbernoulli_pm(z[ic] * dϕ*F/RT  + dμex(βk,βl,electrolyte)/RT)
     D[ic] * (bm*ck - bp*cl)
 end
@@ -74,7 +74,7 @@ end
 Flux expression based on reciprocal activity coefficents, see Fuhrmann, CPC 2015
 """
 function aflux(ic,dϕ,ck,cl,βk,βl,bar_ck,bar_cl,electrolyte)
-    @unpack D,z,F,RT= electrolyte
+    (;D,z,F,RT) = electrolyte
     bp, bm = fbernoulli_pm(z[ic] * dϕ*F/RT)
     D[ic] * (bm*ck*βk - bp*cl*βl)*(1/βk+1/βl)/2
 end
@@ -85,7 +85,7 @@ end
 Flux expression based on centrals differences, see Gaudeul/Fuhrmann 2022, Cances
 """
 function cflux(ic,dϕ,ck,cl,βk,βl,bar_ck,bar_cl,electrolyte)
-    @unpack D,z,F,RT= electrolyte
+    (; D,z,F,RT) = electrolyte
     lck = rlog(ck/bar_ck,electrolyte)*RT
     lcl = rlog(cl/bar_cl,electrolyte)*RT
     D[ic] * 0.5 * (ck + cl) * (lck - lcl +  dμex(βk,βl,electrolyte)  + z[ic]*F*dϕ)/RT
@@ -99,7 +99,7 @@ Finite volume flux. It calls either [`sflux`](@ref), [`cflux`](@ref) or [`aflux`
 function pnpflux(f, u, edge, electrolyte)
     iϕ = electrolyte.iϕ # index of potential
     ip = electrolyte.ip
-    @unpack ip, iϕ, v0, v, M0, M, κ, ε_0, ε, RT, nc, eneutral, pscale, scheme = electrolyte
+    (;ip, iϕ, v0, v, M0, M, κ, ε_0, ε, RT, nc, eneutral, pscale, scheme) = electrolyte
     
     pk,pl = u[ip,1]*pscale,u[ip,2]*pscale
     ϕk,ϕl = u[iϕ,1],u[iϕ,2]
@@ -181,7 +181,7 @@ electrolytedata(sys)=sys.physics.data
 Return vector of unknowns initialized with bulk data.
 """
 function pnpunknowns(sys)
-    @unpack iϕ,ip,nc,c_bulk=electrolytedata(sys)
+    (; iϕ,ip,nc,c_bulk) = electrolytedata(sys)
     u=unknowns(sys)
     @views u[iϕ,:] .= 0
     @views u[ip,:] .= 0

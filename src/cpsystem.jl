@@ -140,7 +140,7 @@ electrolytedata(sys)::ElectrolyteData=sys.physics.data
 boundarydata(sys)=sys.physics.data.bdata
 
 function nppunknowns(sys)
-    @unpack iϕ,ip,nc,c_bulk=electrolytedata(sys)
+    (; iϕ,ip,nc,c_bulk) = electrolytedata(sys)
     u=unknowns(sys)
     @views u[iϕ,:] .= 0
     @views u[ip,:] .= 0

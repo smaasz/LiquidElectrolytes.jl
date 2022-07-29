@@ -11,12 +11,10 @@ Methods called:
 =#
 module Example101_DLCap
 using LessUnitful
-using Unitful
 using VoronoiFVM,ExtendableGrids,GridVisualize
 using LiquidElectrolytes
-using Parameters
 using PyPlot,Colors
-using DocStringExtensions
+
 
 function main(;voltages=-2:0.01:2,           ## Voltages/V
               molarities=[0.001,0.01,0.1,1], ## Molarities/M
@@ -40,7 +38,7 @@ function main(;voltages=-2:0.01:2,           ## Voltages/V
 
     ## Define boundary conditions 
     function bcondition(f,u,bnode,data)
-	@unpack iϕ,Γ_we,Γ_bulk,ϕ_we = data
+	(;iϕ,Γ_we,Γ_bulk,ϕ_we) = data
         
 	## Dirichlet ϕ=ϕ_we at Γ_we
 	boundary_dirichlet!(f,u,bnode,species=iϕ,region=Γ_we,value=ϕ_we)

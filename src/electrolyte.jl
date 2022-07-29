@@ -17,7 +17,7 @@ has keyword constructors like
 
 $(TYPEDFIELDS)
 """
-@with_kw mutable struct ElectrolyteData <: AbstractElectrolyteData
+@kwdef mutable struct ElectrolyteData <: AbstractElectrolyteData
     "Number of ionic species."
     nc::Int=2
     

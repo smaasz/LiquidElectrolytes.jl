@@ -43,7 +43,7 @@ end
 Bulk boundary condition for electrolyte: set potential, pressure and concentrations to bulk values.
 """
 function bulkbcondition(f,u,bnode,data;region=data.Γ_bulk)
-    @unpack iϕ,ip,nc,ϕ_bulk,p_bulk,c_bulk=data
+    (; iϕ,ip,nc,ϕ_bulk,p_bulk,c_bulk) = data
     if bnode.region==region
         boundary_dirichlet!(f,u,bnode;species=iϕ,region,value=ϕ_bulk)
         boundary_dirichlet!(f,u,bnode;species=ip,region,value=p_bulk)

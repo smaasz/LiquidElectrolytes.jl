@@ -1,8 +1,6 @@
 using Test
 using LiquidElectrolytes
 using LinearAlgebra
-using CompositeStructs,Parameters
-using Base: @kwdef
 using ExtendableGrids,VoronoiFVM
 using LessUnitful
 
@@ -24,7 +22,7 @@ end
     
     
     function bcondition(f,u,bnode,data::ElectrolyteData)
-        @unpack iϕ,Γ_we,ϕ_we = data
+        (; iϕ,Γ_we,ϕ_we) = data
         boundary_dirichlet!(f,u,bnode,species=iϕ,region=Γ_we,value=ϕ_we)
         bulkbcondition(f,u,bnode,data)
     end
