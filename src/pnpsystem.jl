@@ -38,7 +38,7 @@ default_bcondition(f,u,bnode,electrolyte)= nothing
 """
      dμex(βk, βl, electrolyte)
 
-Calculate differences of excess chemical potentials from reciprocal activity coefficient
+Calculate differences of excess chemical potentials from reciprocal activity coefficients
 """
 function dμex(βk, βl, electrolyte)
     if βk>βl
@@ -82,13 +82,13 @@ end
 """
     aflux(ic,dϕ,ck,cl,βk,βl,bar_ck,bar_cl,electrolyte)
 
-Flux expression based on centrals differences, see Gaudeul/Fuhrmann 2022, Cances
+Flux expression based on central differences, see Gaudeul/Fuhrmann 2022
 """
 function cflux(ic,dϕ,ck,cl,βk,βl,bar_ck,bar_cl,electrolyte)
     (; D,z,F,RT) = electrolyte
-    lck = rlog(ck/bar_ck,electrolyte)*RT
-    lcl = rlog(cl/bar_cl,electrolyte)*RT
-    D[ic] * 0.5 * (ck + cl) * (lck - lcl +  dμex(βk,βl,electrolyte)  + z[ic]*F*dϕ)/RT
+    μk = rlog(ck/bar_ck,electrolyte)*RT
+    μl = rlog(cl/bar_cl,electrolyte)*RT
+    D[ic] * 0.5 * (ck + cl) * (μk - μl +  dμex(βk,βl,electrolyte)  + z[ic]*F*dϕ)/RT
 end
 
 """
@@ -120,13 +120,17 @@ function pnpflux(f, u, edge, electrolyte)
 
     for ic = 1:nc
         f[ic]=0.0
+        ## Regularize ck,cl so they don't become zero
         ck,cl=u[ic,1]+electrolyte.epsreg,u[ic,2]+electrolyte.epsreg
-        V=0.0
+        barv=0.0
+
+        ## Calculate the reciprocal activity coefficients first,
+        ## as these expressions are less degenerating.
         if bikerman
             Mrel=M[ic]/M0
-            V=v[ic]+(κ[ic]-Mrel)*v0
-            βk = exp(V*pk/(RT))*bar_ck^(Mrel-1.0)/(c0k^Mrel)
-            βl = exp(V*pl/(RT))*bar_cl^(Mrel-1.0)/(c0l^Mrel)
+            barv=v[ic]+(κ[ic]-Mrel)*v0
+            βk = exp(barv*pk/(RT))*bar_ck^(Mrel-1.0)/(c0k^Mrel)
+            βl = exp(barv*pl/(RT))*bar_cl^(Mrel-1.0)/(c0l^Mrel)
         end
 
         if scheme==:μex

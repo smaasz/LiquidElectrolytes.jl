@@ -5,7 +5,6 @@
 ```@docs
 LiquidElectrolytes.charge
 LiquidElectrolytes.vrel
-LiquidElectrolytes.c0_barc
 LiquidElectrolytes.rlog
 LiquidElectrolytes.rexp
 LiquidElectrolytes.wnorm

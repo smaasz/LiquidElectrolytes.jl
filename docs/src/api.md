@@ -20,7 +20,8 @@ ElectrolyteData()
 ```@docs
 dlcap0(::ElectrolyteData)
 debyelength(::ElectrolyteData)
-chemical_potentials!
+chemical_potential
+c0_barc
 rrate
 ``` 
 
