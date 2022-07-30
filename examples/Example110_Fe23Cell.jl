@@ -19,11 +19,11 @@ using VoronoiFVM
 using LiquidElectrolytes
 using PyPlot,Colors
 using StaticArrays
-
+using InteractiveUtils
 
 function main(;nref=0,
               compare=false,
-              eneutral=false,
+              eneutral::Bool=false,
               voltages=(-1:0.005:1)*ufac"V",
               dlcap=false,
               R0=1.0e-6,
@@ -56,26 +56,28 @@ function main(;nref=0,
 
 
     R0=R0*ufac"mol/(cm^2*s)"
-    Δg=0.0
-    β=0.5
+    Δg = 0.0
+    β = 0.5
     ihplus=1
-    ife2=2
-    ife3=3
-    iso4=4
+    ife2 = 2
+    ife3 = 3
+    iso4 = 4
 
     function halfcellbc(f,u,bnode,data)
-        (;iϕ,nc,Γ_we, Γ_bulk,ϕ_we,eneutral)=data
+        (;nc,Γ_we,Γ_bulk,ϕ_we,ip,iϕ,v,v0,RT)=data
         bulkbcondition(f,u,bnode,data;region=Γ_bulk)
         if bnode.region==Γ_we
             if !data.eneutral
                 boundary_dirichlet!(f,u,bnode;species=iϕ,region=Γ_we,value=ϕ_we)
             end
-            μ0,μ=chemical_potentials!(MVector{4,eltype(u)}(undef),u,data)
-            A=(μ[ife2]-μ[ife3]+Δg - eneutral*F*(u[iϕ]-ϕ_we))/(R*data.T)
-            r=rrate(R0,β,A)
+            c0,barc=c0_barc(u,data)
+            μfe2=chemical_potential(u[ife2], barc, u[ip], v[ife2]+κ*v0, data)
+	    μfe3=chemical_potential(u[ife3], barc, u[ip], v[ife2]+κ*v0, data)
+            r=rrate(R0,β,(μfe2 - μfe3 + Δg - data.eneutral*F*(u[iϕ]-ϕ_we))/RT)
             f[ife2]-=r
             f[ife3]+=r
         end
+        nothing
     end
     
     
@@ -86,7 +88,8 @@ function main(;nref=0,
                              Γ_we=1,
                              Γ_bulk=2,
                              scheme)
-    (;iϕ,ip)=celldata
+
+    (;iϕ::Int,ip::Int)=celldata
     
     celldata.c_bulk[ihplus]=1.0*mol/dm^3
     celldata.c_bulk[ife2]=0.1*mol/dm^3
@@ -96,8 +99,9 @@ function main(;nref=0,
     @assert isapprox(celldata.c_bulk'*celldata.z,0, atol=1.0e-12)
     
     cell=PNPSystem(grid;bcondition=halfcellbc,celldata)
-    check_allocs!(cell,false)
+#    check_allocs!(cell,false)
 
+    
     ## Compare electroneutral and double layer cases
     if compare
 

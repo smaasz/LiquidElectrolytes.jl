@@ -24,7 +24,7 @@ end
 
 include("electrolyte.jl")
 export ElectrolyteData, AbstractElectrolyteData
-export dlcap0,chemical_potentials!, rrate,debyelength
+export dlcap0,chemical_potentials!, rrate,debyelength, chemical_potential, c0_barc
 export showstruct, rlog, electrolyte,solventconcentration
 
 include("pnpsystem.jl")

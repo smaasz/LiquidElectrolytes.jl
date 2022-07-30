@@ -257,16 +257,17 @@ round(μ0,sigdigits=5),round.(μ,sigdigits=5)
 ```
 """
 function chemical_potentials!(μ,u,data::AbstractElectrolyteData)
+    (;ip, pscale,RT,v0,v,nc) = data
     c0,barc=c0_barc(u,data)
-    p=u[data.ip]*data.pscale
-    p_ref=0
-    μ0=rlog(c0/barc,data)*data.RT+data.v0*(p-p_ref)
-    for i=1:data.nc
-        μ[i]=rlog(u[i]/barc,data)*data.RT+data.v[i]*(p-p_ref)
+    μ0=chemical_potential(c0,barc, u[ip], data.v0,data)
+    for i=1:nc
+        μ[i]=chemical_potential(u[i],barc, u[ip], data.v[i],data)
     end
     μ0,μ
 end
 
+
+chemical_potential(c, barc, p, v,data)=rlog(c/barc,data)*data.RT+v*data.pscale*(p-data.p_bulk)
 
 """
     rexp(x;trunc=500.0)
