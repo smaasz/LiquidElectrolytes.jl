@@ -99,8 +99,6 @@ function main(;nref=0,
     @assert isapprox(celldata.c_bulk'*celldata.z,0, atol=1.0e-12)
     
     cell=PNPSystem(grid;bcondition=halfcellbc,celldata)
-#    check_allocs!(cell,false)
-
     
     ## Compare electroneutral and double layer cases
     if compare

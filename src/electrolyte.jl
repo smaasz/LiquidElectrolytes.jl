@@ -235,6 +235,20 @@ function solventconcentration(U::Array, electrolyte)
     c0
 end
 
+
+
+@doc raw"""
+        chemical_potential(c, barc, p, v, electrolye)
+
+Calculate chemical potential of species with concentration c
+
+```math
+        μ = v(p-p_{ref}) + RT\log \frac{c}{\bar c}
+```
+"""
+chemical_potential(c, barc, p, v, data)=rlog(c/barc,data)*data.RT+v*data.pscale*(p-data.p_bulk)
+
+
 """
     chemical_potentials!(μ,u,electrolyte)
 
@@ -267,7 +281,6 @@ function chemical_potentials!(μ,u,data::AbstractElectrolyteData)
 end
 
 
-chemical_potential(c, barc, p, v,data)=rlog(c/barc,data)*data.RT+v*data.pscale*(p-data.p_bulk)
 
 """
     rexp(x;trunc=500.0)
