@@ -32,6 +32,7 @@ function main(;nref=0,
               xmax=0.5,
               κ=10.0,
               Plotter=PyPlot,
+              new=false,
               kwargs...)
 
     @local_phconstants N_A e R ε_0
@@ -43,7 +44,7 @@ function main(;nref=0,
     defaults=(; max_round=3,
               tol_round=1.0e-9,
               verbose=false,
-              tol_relative=1.0e-5,
+              tol_relative=1.0e-8,
               tol_mono=1.0e-10)
 
     kwargs=merge(defaults, kwargs) 
@@ -134,8 +135,11 @@ function main(;nref=0,
     
     ## Full calculation
 
-    volts,currs, sols=ivsweep(cell;voltages,ispec=ife2,kwargs...)
-
+    if new 
+        volts,currs, sols=ivsweep_new(cell;voltages,ispec=ife2,kwargs...)
+    else
+        volts,currs, sols=ivsweep(cell;voltages,ispec=ife2,kwargs...)
+    end
     tsol=VoronoiFVM.TransientSolution(sols,volts)
 
     for it=1:length(tsol.t)

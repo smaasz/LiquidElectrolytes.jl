@@ -33,7 +33,7 @@ export pnpunknowns,electrolytedata,bulkbcondition
 
 
 include("cells.jl")
-export ivsweep, dlcapsweep
+export ivsweep, dlcapsweep,ivsweep_new
 
 
 include("equilibrium-pluto.jl")

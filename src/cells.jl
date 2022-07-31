@@ -241,3 +241,78 @@ function ivsweep(sys;voltages=(-0.5:0.1:0.5)*ufac"V",ispec=1,solver_kwargs...)
 end
 
     
+function ivsweep_new(sys;voltages=(-0.5:0.1:0.5)*ufac"V",ispec=1,solver_kwargs...)
+    ranges=splitz(voltages)
+    F=ph"N_A*e"
+    
+    factory=VoronoiFVM.TestFunctionFactory(sys)
+    data=sys.physics.data
+    
+    tf=testfunction(factory,[data.Γ_bulk],[data.Γ_we] )
+
+    iplus = zeros(0)
+    iminus = zeros(0)
+    vminus=[]
+    vplus=[]
+    sminus=[]
+    splus=[]
+    weights=ones(data.nc+2)
+    weights[data.ip]=0
+    mynorm=u->wnorm(u,weights,Inf)
+    myrnorm=u->wnorm(u,weights,1)
+    data=electrolytedata(sys)
+    data.ϕ_we=0
+    control=SolverControl(;verbose=true,
+                          handle_exceptions=true,
+                          Δp_min=1.0e-6,
+                          Δp=1.0e-2,
+                          Δp_grow=1.2,
+                          Δu_opt=5.0e-3,
+                          solver_kwargs...)
+    iϕ=data.iϕ
+    inival = solve(sys;inival=pnpunknowns(sys), solver_kwargs...)
+
+    allprogress=voltages[end]-voltages[begin]
+    ϕprogress=0
+    @withprogress for range in ranges
+        dir=range[end]>range[1] ? 1 : -1
+
+        function pre(sol,ϕ)
+            data.ϕ_we=dir*ϕ
+        end
+        
+        function post(sol,oldsol, ϕ, Δϕ)
+            I=-integrate(sys,sys.physics.breaction,sol; boundary=true)[:,data.Γ_we]
+            if dir>0
+                push!(iplus, I[ispec]*F)
+            else
+                push!(iminus, I[ispec]*F)
+            end
+            ϕprogress += abs(Δϕ)
+            @logprogress ϕprogress/allprogress
+        end
+        
+        function delta(u,v,t, Δt)
+            n=mynorm(u-v)*data.v0
+        end
+
+        psol=solve(sys;inival,embed=dir*range,control,pre,post,delta,store_all=true,mynorm=mynorm,myrnorm=myrnorm)
+
+        if dir==1
+            vplus=psol.t
+            splus=psol.u
+        else
+            vminus=-psol.t
+            sminus=psol.u
+
+            popfirst!(iminus)
+            popfirst!(vminus)
+            popfirst!(sminus)
+        end
+    end
+
+
+    vcat(reverse(vminus),vplus),vcat(reverse(iminus),iplus), vcat(reverse(sminus),splus) 
+end
+
+    
