@@ -64,7 +64,7 @@ $(TYPEDFIELDS)
     ϕ_we::Float64=0.0*ufac"V"
     
     "Working electrode  boundary number"
-    Γ_we::Int=1
+    Γ_we::Vector{Int}=[1]
     
     "Temperature"
     T::Float64=(273.15+25)*ufac"K"
