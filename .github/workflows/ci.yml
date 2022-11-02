@@ -31,10 +31,7 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - run: |
-          julia --project=docs -e '
-            using Pkg
-            Pkg.Registry.add("General")
-            Pkg.Registry.add(RegistrySpec(url = "https://github.com/j-fu/PackageNursery"))'
+          julia --project=docs docs/addnursery.jl
       - uses: actions/cache@v1
         env:
           cache-name: cache-artifacts
@@ -61,10 +58,11 @@ jobs:
           version: '1'
       - run: |
           julia --project=docs docs/addnursery.jl
-        env:
-          PYTHON: ""
-      #  env:
-      #    JULIA_PKG_SERVER: ""      
+      - run: |
+          julia --project=docs -e '
+            using Pkg
+            Pkg.develop(PackageSpec(path=pwd()))
+            Pkg.instantiate()'
       # - run: |
       #     julia --project=docs -e '
       #       using Documenter: doctest
