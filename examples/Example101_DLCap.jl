@@ -38,10 +38,12 @@ function main(;voltages=-2:0.01:2,           ## Voltages/V
 
     ## Define boundary conditions 
     function bcondition(f,u,bnode,data)
-	(;iϕ,Γ_we,Γ_bulk,ϕ_we) = data
+	    (;iϕ,Γ_we,Γ_bulk,ϕ_we) = data
         
-	## Dirichlet ϕ=ϕ_we at Γ_we
-	boundary_dirichlet!(f,u,bnode,species=iϕ,region=Γ_we,value=ϕ_we)
+	    ## Dirichlet ϕ=ϕ_we at Γ_we
+        for index in Γ_we
+            boundary_dirichlet!(f,u,bnode;species=iϕ,region=index,value=ϕ_we)
+        end
 
         ## Bulk condition at Γ_bulk
         bulkbcondition(f,u,bnode,data,region=Γ_bulk)
@@ -49,7 +51,7 @@ function main(;voltages=-2:0.01:2,           ## Voltages/V
 
     ## Create electrolyte data
     celldata=ElectrolyteData(nc=2,
-                             Γ_we=1,
+                             Γ_we=[1],
 			     Γ_bulk=2;
 			     scheme,
                              κ=fill(κ,2),
