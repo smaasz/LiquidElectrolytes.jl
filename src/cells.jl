@@ -188,15 +188,15 @@ function ivsweep(sys;voltages=(-0.5:0.1:0.5)*ufac"V",ispec=1,solver_kwargs...)
     sol=copy(inival0)
     ϕprogress=0
     function show_error(u)
-        @show u[1,1:5]
-        @show u[2,1:5]
-        @show u[3,1:5]
-        @show u[4,1:5]
-        @show u[5,1:5]
-        @show u[6,1:5]
-        @show chemical_potentials!(zeros(size(u,1)),u[:,1],data)
-        c0,barc= c0_barc(u[:,1],data)
-        @show c0/barc, u[1,1]/barc,u[2,1]/barc
+        # @show u[1,1:5]
+        # @show u[2,1:5]
+        # @show u[3,1:5]
+        # @show u[4,1:5]
+        # @show u[5,1:5]
+        # @show u[6,1:5]
+        # @show chemical_potentials!(zeros(size(u,1)),u[:,1],data)
+        # c0,barc= c0_barc(u[:,1],data)
+        # @show c0/barc, u[1,1]/barc,u[2,1]/barc
         @error "bailing out at ϕ_we=$(data.ϕ_we)V"
     end
 
@@ -206,7 +206,8 @@ function ivsweep(sys;voltages=(-0.5:0.1:0.5)*ufac"V",ispec=1,solver_kwargs...)
     
     @withprogress for range in ranges
         inival .= inival0
-        for ϕ in range 
+        for ϕ in range
+            @show ϕ
             data.ϕ_we=ϕ
             try
                 solve!(sol, inival, sys;mynorm,myrnorm,control)

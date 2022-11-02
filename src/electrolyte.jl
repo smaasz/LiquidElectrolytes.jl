@@ -44,7 +44,7 @@ $(TYPEDFIELDS)
 
     "Molar volumes of ions"
     v::Vector{Float64}=fill(v0,nc)
-    
+
     "Solvation numbers"
     κ::Vector{Float64}=fill(10.0,nc)
     

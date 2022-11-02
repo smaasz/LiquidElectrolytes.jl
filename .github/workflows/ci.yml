@@ -16,12 +16,12 @@ jobs:
       matrix:
         version:
           - '1.7' # Replace this with the minimum Julia version that your package supports. E.g. if your package requires Julia 1.5 or higher, change this to '1.5'.
-          # - '1'   # Leave this line unchanged. '1' will automatically expand to the latest stable 1.x release of Julia.
-          - 'nightly' 
+          - '1'   # Leave this line unchanged. '1' will automatically expand to the latest stable 1.x release of Julia.
+          # - 'nightly' # some problems with JLD2
         os:
           - ubuntu-latest
           - macos-latest
-      #    - windows-latest # disable due to Powershell hassles (nested strings...)
+          - windows-latest # disable due to Powershell hassles (nested strings...)
         arch:
           - x64
     steps:
@@ -60,11 +60,7 @@ jobs:
         with:
           version: '1'
       - run: |
-          julia --project=docs -e 'using Pkg
-            Pkg.Registry.add("General")
-            Pkg.Registry.add(RegistrySpec(url = "https://github.com/j-fu/PackageNursery"))
-            Pkg.develop(PackageSpec(path=pwd()))
-            Pkg.instantiate()'
+          julia --project=docs docs/addnursery.jl
         env:
           PYTHON: ""
       #  env:
