@@ -23,9 +23,7 @@ end
     
     function bcondition(f,u,bnode,data::ElectrolyteData)
         (; iϕ,Γ_we,ϕ_we) = data
-        for index in Γ_we
-            boundary_dirichlet!(f,u,bnode,species=iϕ,region=index,value=ϕ_we) 
-        end
+        boundary_dirichlet!(f,u,bnode,species=iϕ,region=Γ_we,value=ϕ_we)
         bulkbcondition(f,u,bnode,data)
     end
 
@@ -40,15 +38,15 @@ end
     
     grid=simplexgrid(X)
     κ=[0,0]
-    acelldata=ElectrolyteData(;Γ_we=[1], Γ_bulk=2,  scheme=:act,κ)
+    acelldata=ElectrolyteData(;Γ_we=1, Γ_bulk=2,  scheme=:act,κ)
     acell=PNPSystem(grid;bcondition,celldata=acelldata)
     avolts,acaps=dlcapsweep(acell;voltages,molarity,δ)
 
-    μcelldata=ElectrolyteData(;Γ_we=[1], Γ_bulk=2, scheme=:μex,κ)
+    μcelldata=ElectrolyteData(;Γ_we=1, Γ_bulk=2, scheme=:μex,κ)
     μcell=PNPSystem(grid;bcondition,celldata=μcelldata)
     μvolts,μcaps=dlcapsweep(μcell;voltages,molarity,δ)
     
-    ccelldata=ElectrolyteData(;Γ_we=[1], Γ_bulk=2, scheme=:cent,κ)
+    ccelldata=ElectrolyteData(;Γ_we=1, Γ_bulk=2, scheme=:cent,κ)
     ccell=PNPSystem(grid;bcondition,celldata=ccelldata)
     cvolts,ccaps=dlcapsweep(ccell;voltages,molarity,δ)
     

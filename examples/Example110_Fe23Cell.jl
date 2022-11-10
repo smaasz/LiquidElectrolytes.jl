@@ -67,18 +67,16 @@ function main(;nref=0,
     function halfcellbc(f,u,bnode,data)
         (;nc,Γ_we,Γ_bulk,ϕ_we,ip,iϕ,v,v0,RT)=data
         bulkbcondition(f,u,bnode,data;region=Γ_bulk)
-        if bnode.region==Γ_we[1]
+        if bnode.region==Γ_we
+            if !data.eneutral
+                boundary_dirichlet!(f,u,bnode;species=iϕ,region=Γ_we,value=ϕ_we)
+            end
             c0,barc=c0_barc(u,data)
             μfe2=chemical_potential(u[ife2], barc, u[ip], v[ife2]+κ*v0, data)
-	        μfe3=chemical_potential(u[ife3], barc, u[ip], v[ife2]+κ*v0, data)
+	    μfe3=chemical_potential(u[ife3], barc, u[ip], v[ife2]+κ*v0, data)
             r=rrate(R0,β,(μfe2 - μfe3 + Δg - data.eneutral*F*(u[iϕ]-ϕ_we))/RT)
             f[ife2]-=r
             f[ife3]+=r
-        end
-        if !eneutral
-            for index in Γ_we
-                boundary_dirichlet!(f,u,bnode;species=iϕ,region=index,value=ϕ_we)
-            end
         end
         nothing
     end
@@ -88,7 +86,7 @@ function main(;nref=0,
                              z=[1,2,3,-2],
                              eneutral,
                              κ=fill(κ,4),
-                             Γ_we=[1],
+                             Γ_we=1,
                              Γ_bulk=2,
                              scheme)
 

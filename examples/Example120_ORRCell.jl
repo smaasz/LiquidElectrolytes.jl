@@ -57,25 +57,23 @@ function main(;voltages=-1:0.005:1,compare=false,molarity=0.1,nref=0,κ=10.0,ene
     function halfcellbc(f,u,bnode,data)
         bulkbcondition(f,u,bnode,data)
         (;iϕ,eneutral,ϕ_we,Γ_we,RT)=data
-        if bnode.region == Γ_we[1]
+        if bnode.region==Γ_we
             f.=0.0
+            if !data.eneutral
+                boundary_dirichlet!(f,u,bnode;species=iϕ,region=data.Γ_we,value=data.ϕ_we)
+            end
             μh2o,μ=chemical_potentials!(MVector{4,eltype(u)}(undef),u,data)
-            A=(4*μ[ihplus]+μ[io2]-2μh2o+Δg + eneutral*F*(u[iϕ]-ϕ_we))/(RT)
+            A=(4*μ[ihplus]+μ[io2]-2μh2o+Δg + eneutral*F*(u[iϕ]-data.ϕ_we))/(RT)
             r=rrate(R0,β,A)
             f[ihplus]-=4*r
             f[io2]-=r
-        end
-        if !eneutral
-            for index in Γ_we
-                boundary_dirichlet!(f,u,bnode;species=iϕ,region=index,value=ϕ_we)
-            end
         end
     end
 
 
     
     
-    celldata=ElectrolyteData(;nc=3, z=[1,-2,0], κ=fill(κ,3), Γ_we=[1], Γ_bulk=2,eneutral,scheme)
+    celldata=ElectrolyteData(;nc=3, z=[1,-2,0], κ=fill(κ,3), Γ_we=1, Γ_bulk=2,eneutral,scheme)
 
     (;iϕ,c_bulk)=celldata
 

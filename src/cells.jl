@@ -166,7 +166,7 @@ function ivsweep(sys;voltages=(-0.5:0.1:0.5)*ufac"V",ispec=1,solver_kwargs...)
     factory=VoronoiFVM.TestFunctionFactory(sys)
     data=sys.physics.data
 
-    tf=testfunction(factory,[data.Γ_bulk],data.Γ_we)
+    tf=testfunction(factory,[data.Γ_bulk],[data.Γ_we] )
 
 
     vplus = zeros(0)
@@ -221,10 +221,7 @@ function ivsweep(sys;voltages=(-0.5:0.1:0.5)*ufac"V",ispec=1,solver_kwargs...)
                 break
             end
             inival .= sol
-            I=-integrate(sys,sys.physics.breaction,sol; boundary=true)[:,data.Γ_we[1]]
-            for index in 2:length(data.Γ_we)
-                I += -integrate(sys,sys.physics.breaction,sol; boundary=true)[:,data.Γ_we[index]]
-            end
+            I=-integrate(sys,sys.physics.breaction,sol; boundary=true)[:,data.Γ_we]
             if range[end]>range[1]
                 push!(vplus, ϕ)
                 push!(iplus, I[ispec]*F)
@@ -252,7 +249,7 @@ function ivsweep_new(sys;voltages=(-0.5:0.1:0.5)*ufac"V",ispec=1,solver_kwargs..
     factory=VoronoiFVM.TestFunctionFactory(sys)
     data=sys.physics.data
     
-    tf=testfunction(factory,[data.Γ_bulk],data.Γ_we )
+    tf=testfunction(factory,[data.Γ_bulk],[data.Γ_we] )
 
     iplus = zeros(0)
     iminus = zeros(0)
@@ -286,11 +283,7 @@ function ivsweep_new(sys;voltages=(-0.5:0.1:0.5)*ufac"V",ispec=1,solver_kwargs..
         end
         
         function post(sol,oldsol, ϕ, Δϕ)
-            # I=-integrate(sys,sys.physics.breaction,sol; boundary=true)[:,data.Γ_we]
-            I=-integrate(sys,sys.physics.breaction,sol; boundary=true)[:,data.Γ_we[1]]
-            for index in 2:length(data.Γ_we)
-                I += -integrate(sys,sys.physics.breaction,sol; boundary=true)[:,data.Γ_we[index]]
-            end
+            I=-integrate(sys,sys.physics.breaction,sol; boundary=true)[:,data.Γ_we]
             if dir>0
                 push!(iplus, I[ispec]*F)
             else
