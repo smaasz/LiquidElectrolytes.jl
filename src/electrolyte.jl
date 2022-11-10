@@ -102,7 +102,7 @@ $(TYPEDFIELDS)
     epsreg::Float64=1.0e-20
 end
 
-function Base.show(io::IO, ::MIME"text/plain", this::ElectrolyteData)
+function Base.show(io::IO, ::MIME"text/plain", this::AbstractElectrolyteData)
     showstruct(io,this)
 end
 
