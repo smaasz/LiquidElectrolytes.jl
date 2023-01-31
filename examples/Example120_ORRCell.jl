@@ -29,14 +29,14 @@ using LessUnitful
 
 
 
-function main(;voltages=-1:0.005:1,compare=false,molarity=0.1,nref=0,κ=10.0,eneutral=false,scheme=:μex,Plotter=PyPlot,kwargs...)
+function main(;voltages=-1:0.005:1,compare=false,molarity=0.1,nref=0,κ=10.0,eneutral=false,scheme=:μex,Plotter=PyPlot,R0=1.0e-4,epsreg=1.0e-20,kwargs...)
     
     @local_phconstants R N_A e
     @local_unitfactors nm cm μF mol dm s
     F=N_A*e
     
     
-    defaults=(; max_round=3,tol_round=1.0e-10, verbose=false, tol_relative=1.0e-7,tol_mono=1.0e-10)
+    defaults=(; max_round=3,tol_round=1.0e-10, verbose=false, tol_relative=1.0e-7,tol_mono=1.0e-7)
     kwargs=merge(defaults, kwargs) 
     
     hmin=1.0e-1*nm*2.0^(-nref)
@@ -46,17 +46,20 @@ function main(;voltages=-1:0.005:1,compare=false,molarity=0.1,nref=0,κ=10.0,ene
     grid=simplexgrid(X)
     
 
-    R0=10.0e-4*mol/(cm^2*s)
+    R0=R0*mol/(cm^2*s)
     Δg=0.0
     β=0.5
     ϕ_we=0.0
     ihplus=1
     iso4=2
     io2=3
-
+    z=[1,-2,0]
+    κ=[κ,κ,0]
+    
     function halfcellbc(f,u,bnode,data)
         bulkbcondition(f,u,bnode,data)
         (;iϕ,eneutral,ϕ_we,Γ_we,RT)=data
+
         if bnode.region==Γ_we
             f.=0.0
             if !data.eneutral
@@ -64,7 +67,8 @@ function main(;voltages=-1:0.005:1,compare=false,molarity=0.1,nref=0,κ=10.0,ene
             end
             μh2o,μ=chemical_potentials!(MVector{4,eltype(u)}(undef),u,data)
             A=(4*μ[ihplus]+μ[io2]-2μh2o+Δg + eneutral*F*(u[iϕ]-data.ϕ_we))/(RT)
-            r=rrate(R0,β,A)
+            @show value(A)
+            r=srrate(R0,β,A)
             f[ihplus]-=4*r
             f[io2]-=r
         end
@@ -73,7 +77,7 @@ function main(;voltages=-1:0.005:1,compare=false,molarity=0.1,nref=0,κ=10.0,ene
 
     
     
-    celldata=ElectrolyteData(;nc=3, z=[1,-2,0], κ=fill(κ,3), Γ_we=1, Γ_bulk=2,eneutral,scheme)
+    celldata=ElectrolyteData(;nc=3,z, κ, Γ_we=1, Γ_bulk=2,eneutral,scheme,epsreg)
 
     (;iϕ,c_bulk)=celldata
 
@@ -121,8 +125,10 @@ function main(;voltages=-1:0.005:1,compare=false,molarity=0.1,nref=0,κ=10.0,ene
     scalarplot!(vis[1,1],currs,volts,markershape=:none,title="IV",xlabel="I",ylabel="V")
     scalarplot!(vis[1,2],cell,tsol;species=io2,aspect,xlimits,title="O2",colormap=:summer)
     scalarplot!(vis[1,3],cell,tsol;species=ihplus,aspect,xlimits,title="H+",colormap=:summer)
-    scalarplot!(vis[1,4],cell,tsol;species=iϕ,aspect,xlimits,title="ϕ",colormap=:bwr)
-    scalarplot!(vis[1,5],tsol[io2,1,:],volts,title="c_o2(0)",xlabel="O2",ylabel="V")
+#    scalarplot!(vis[1,4],cell,tsol;species=iϕ,aspect,xlimits,title="ϕ",colormap=:bwr)
+    scalarplot!(vis[1,4],tsol[io2,1,:], volts,label="O2",xlabel="c",color=:green,clear=false,legend=:rc)
+    scalarplot!(vis[1,5],tsol[ihplus,1,:],volts,title="c(0)",xlabel="c",ylabel="V",label="H+",color=:red)
+    scalarplot!(vis[1,5],tsol[iso4,1,:],volts,label="SO4--",color=:blue,clear=false,legend=:rc)
 
     reveal(vis)
 end

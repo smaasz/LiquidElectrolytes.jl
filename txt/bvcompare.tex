@@ -103,15 +103,15 @@ where $  \bar c = \sum_{i=0}^N  c_i$.
 
 
 For the derivation of the numerical scheme we calculate the non-constant
-contribution to the excess chemical potential -- the difference between the chemical potential
-contribution to the drivimg force $\mu_i - \frac{M_i}{M_0}\mu_0$ and the chemical potential of an ideal gas
-$RT \log c_i$:
-For $i=1\dots N$ we havee
+contribution to the excess chemical potential defined as the difference between the chemical potential
+contribution to the driving force $\mu_i - \frac{M_i}{M_0}\mu_0$ and the chemical potential of an ideal gas
+$RT \log \frac{c_i}{\bar c}$:
+For $i=1\dots N$ we have
 \begin{align}
-  \mu_i^{ex} &=  \mu_i - \frac{M_i}{M_0} \mu_0  - RT \log c_i \nonumber\\
-             &= \bar v_ip + RT \log c_i - RT\log\bar c -\frac{M_i}{M_0}\left(  v_0p + RT \log c_0 - RT\log\bar c\right)  - RT \log c_i\nonumber\\
-            &= \bar v_ip - RT\log\bar c -\frac{M_i}{M_0}\left(  v_0p + RT \log c_0 - RT\log\bar c\right)\nonumber\\
-            &= \left(\bar v_i-\frac{M_i}{M_0}v_0\right)p - \frac{M_i}{M_0}RT\log c_0 +  \left(\frac{M_i}{M_0}-1\right)RT\log \bar c \label{eq:muex}
+  \mu_i^{ex} &=  \mu_i - \frac{M_i}{M_0} \mu_0  - RT \log \frac{c_i}{\bar c} \nonumber\\
+             &= \bar v_ip +  RT \log \frac{c_i}{\bar c}  -\frac{M_i}{M_0}\left(  v_0p + RT \log \frac{c_0}{\bar c}\right)  - RT \log \frac{c_i}{\bar c} \nonumber\\
+            &= \bar v_ip  -\frac{M_i}{M_0}\left(  v_0p + RT \log \frac{c_0}{\bar c}\right)\nonumber\\
+            &= \left(\bar v_i-\frac{M_i}{M_0}v_0\right)p - \frac{M_i}{M_0}RT\log \frac{c_0}{\bar c} \label{eq:muex}
 \end{align}
 and express $c_0$ and $\bar c$ in terms of $c_1\dots c_N$
 \begin{align*}

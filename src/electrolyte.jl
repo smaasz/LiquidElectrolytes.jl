@@ -197,7 +197,7 @@ function c0_barc(c, electrolyte)
         c0 -= c[ic] * vrel(ic,electrolyte)
     end
     barc += c0
-    c0+electrolyte.epsreg, barc+electrolyte.epsreg
+    c0, barc
 end
 
 """
@@ -228,7 +228,7 @@ Calculate vector of solvent concentrations from solution array.
 """
 function solventconcentration(U::Array, electrolyte)
     c0 = similar(U[1,:])
-    c0 .= 1.0 / electrolyte.v0 + electrolyte.epsreg
+    c0 .= 1.0 / electrolyte.v0
     for ic = 1:electrolyte.nc
         c0 -= U[ic,:] .* vrel(ic,electrolyte)
     end
@@ -286,9 +286,9 @@ end
     rexp(x;trunc=500.0)
 
 Regularized exponential. Linear continuation for `x>trunc`,  
-returns 1/rexp(-x) for `x<trunc`.
+returns 1/rexp(-x) for `x<-trunc`.
 """
-function rexp(x;trunc=500.0)
+function rexp(x;trunc=20.0)
     if x<-trunc
         1.0/rexp(-x;trunc)
     elseif x<=trunc

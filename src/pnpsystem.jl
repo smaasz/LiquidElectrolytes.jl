@@ -40,7 +40,7 @@ default_bcondition(f,u,bnode,electrolyte)= nothing
 
 Calculate differences of excess chemical potentials from reciprocal activity coefficients
 """
-function dμex(βk, βl, electrolyte)
+@inline function dμex(βk, βl, electrolyte)
     if βk>βl
         rlog(βk/βl,electrolyte)*(electrolyte.RT)
     else
@@ -121,7 +121,7 @@ function pnpflux(f, u, edge, electrolyte)
     for ic = 1:nc
         f[ic]=0.0
         ## Regularize ck,cl so they don't become zero
-        ck,cl=u[ic,1]+electrolyte.epsreg,u[ic,2]+electrolyte.epsreg
+        ck,cl=u[ic,1],u[ic,2]
         barv=0.0
 
         ## Calculate the reciprocal activity coefficients first,
@@ -129,9 +129,9 @@ function pnpflux(f, u, edge, electrolyte)
         if bikerman
             Mrel=M[ic]/M0
             barv=v[ic]+(κ[ic]-Mrel)*v0
-            βk = exp(barv*pk/(RT))*bar_ck^(Mrel-1.0)/(c0k^Mrel)
-            βl = exp(barv*pl/(RT))*bar_cl^(Mrel-1.0)/(c0l^Mrel)
-        end
+            βk = exp(barv*pk/(RT))*(bar_ck/c0k)^Mrel
+            βl = exp(barv*pl/(RT))*(bar_cl/c0l)^Mrel
+         end
 
         if scheme==:μex
             f[ic]=sflux(ic,dϕ,ck,cl,βk,βl,bar_ck, bar_cl,electrolyte)
