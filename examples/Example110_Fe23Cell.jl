@@ -24,12 +24,12 @@ using InteractiveUtils
 function main(;nref=0,
               compare=false,
               eneutral::Bool=false,
-              voltages=(-1:0.005:1)*ufac"V",
+              voltages=(-1:0.01:1)*ufac"V",
               dlcap=false,
-              R0=1.0e-6,
+              R0=1.0e-10,
               molarities=[0.001,0.01,0.1,1],
               scheme=:μex,
-              xmax=0.5,
+              xmax=1,
               κ=10.0,
               Plotter=PyPlot,
               new=false,
@@ -43,8 +43,8 @@ function main(;nref=0,
     
     defaults=(; max_round=3,
               tol_round=1.0e-9,
-              verbose=false,
-              tol_relative=1.0e-8,
+              verbose="e",
+              reltol=1.0e-8,
               tol_mono=1.0e-10)
 
     kwargs=merge(defaults, kwargs) 
@@ -135,11 +135,7 @@ function main(;nref=0,
     
     ## Full calculation
 
-    if new 
-        volts,currs, sols=ivsweep_new(cell;voltages,ispec=ife2,kwargs...)
-    else
-        volts,currs, sols=ivsweep(cell;voltages,ispec=ife2,kwargs...)
-    end
+    volts,currs, sols=ivsweep(cell;voltages,ispec=ife2,kwargs...)
     tsol=VoronoiFVM.TransientSolution(sols,volts)
 
     for it=1:length(tsol.t)

@@ -78,9 +78,7 @@ function dlcapsweep(sys;voltages=(-1:0.1:1)*ufac"V",δ=1.0e-4,molarity=0.1*ufac"
     data.c_bulk.=molarity
 
     iϕ=data.iϕ
-    inival0 = solve(sys,inival=pnpunknowns(sys))
-    inival=copy(inival0)
-    sol=copy(inival0)
+    inival=solve(sys,inival=pnpunknowns(sys))
     allprogress=sum(length,ranges)
     ϕprogress = 0
     
@@ -99,17 +97,15 @@ function dlcapsweep(sys;voltages=(-1:0.1:1)*ufac"V",δ=1.0e-4,molarity=0.1*ufac"
     
     control=VoronoiFVM.SolverControl(max_round=3, tol_round=1.0e-9;solver_kwargs...)
     @withprogress for range in ranges
-        sol .= inival0
+        sol = inival
         success=true
         for ϕ in range 
             try
                 data.ϕ_we= ϕ
-                inival.=sol
-                s=data.scheme
-                solve!(sol, inival, sys; control)
+                sol=solve(sys;inival=sol, control)
             catch e
                 println(e)
-                show_error(inival,0)
+                show_error(sol,0)
                 success=false
             end
 
@@ -120,11 +116,10 @@ function dlcapsweep(sys;voltages=(-1:0.1:1)*ufac"V",δ=1.0e-4,molarity=0.1*ufac"
             
             try
                 data.ϕ_we=ϕ+δ
-                inival .= sol
-                solve!(sol, inival, sys; control)
+                sol=solve(sys;inival=sol, control)
             catch e
                 println(e)
-                show_error(inival,δ)
+                show_error(sol,δ)
                 success=false
             end
             if !success
@@ -160,89 +155,6 @@ Calculate working electrode current corresponding to rate for species `ispec` fo
 Returns vector of voltages   and vector of currents.
 """
 function ivsweep(sys;voltages=(-0.5:0.1:0.5)*ufac"V",ispec=1,solver_kwargs...)
-    ranges=splitz(voltages)
-    F=ph"N_A*e"
-    
-    factory=VoronoiFVM.TestFunctionFactory(sys)
-    data=sys.physics.data
-
-    tf=testfunction(factory,[data.Γ_bulk],[data.Γ_we] )
-
-
-    vplus = zeros(0)
-    iplus = zeros(0)
-    splus = []
-    vminus = zeros(0)
-    iminus = zeros(0)
-    sminus = []
-    weights=ones(data.nc+2)
-    weights[data.ip]=0
-    mynorm=u->wnorm(u,weights,Inf)
-    myrnorm=u->wnorm(u,weights,1)
-    data=electrolytedata(sys)
-    data.ϕ_we=0
-    control=SolverControl(;solver_kwargs...)
-    iϕ=data.iϕ
-    inival0 = solve(sys;inival=pnpunknowns(sys), solver_kwargs...)
-    inival=copy(inival0)
-    sol=copy(inival0)
-    ϕprogress=0
-    function show_error(u)
-        # @show u[1,1:5]
-        # @show u[2,1:5]
-        # @show u[3,1:5]
-        # @show u[4,1:5]
-        # @show u[5,1:5]
-        # @show u[6,1:5]
-        # @show chemical_potentials!(zeros(size(u,1)),u[:,1],data)
-        # c0,barc= c0_barc(u[:,1],data)
-        # @show c0/barc, u[1,1]/barc,u[2,1]/barc
-        @error "bailing out at ϕ_we=$(data.ϕ_we)V"
-    end
-
-    allprogress=sum(length,ranges)
-    ϕprogress = 0
-
-    
-    @withprogress for range in ranges
-        inival .= inival0
-        for ϕ in range
-            @show ϕ
-            data.ϕ_we=ϕ
-            try
-                solve!(sol, inival, sys;mynorm,myrnorm,control)
-                # control.Δt=1.0e-6
-                # control.Δu_opt=1.0e10
-                # tsol=solve(sys;inival,times=[0,1.0e-3],control,mynorm,myrnorm)
-                # sol.=tsol[end]
-            catch e
-                println(e)
-                show_error(sol)
-                break
-            end
-            inival .= sol
-            I=-integrate(sys,sys.physics.breaction,sol; boundary=true)[:,data.Γ_we]
-            if range[end]>range[1]
-                push!(vplus, ϕ)
-                push!(iplus, I[ispec]*F)
-                push!(splus, copy(sol))
-            else
-                push!(vminus, ϕ)
-                push!(iminus, I[ispec]*F)
-                push!(sminus, copy(sol))
-            end
-            ϕprogress +=1
-            @logprogress ϕprogress/allprogress
-        end
-    end
-    popfirst!(iminus)
-    popfirst!(vminus)
-    popfirst!(sminus)
-    vcat(reverse(vminus),vplus),vcat(reverse(iminus),iplus), vcat(reverse(sminus),splus) 
-end
-
-    
-function ivsweep_new(sys;voltages=(-0.5:0.1:0.5)*ufac"V",ispec=1,solver_kwargs...)
     ranges=splitz(voltages)
     F=ph"N_A*e"
     
@@ -293,10 +205,9 @@ function ivsweep_new(sys;voltages=(-0.5:0.1:0.5)*ufac"V",ispec=1,solver_kwargs..
             @logprogress ϕprogress/allprogress
         end
         
-        function delta(u,v,t, Δt)
+        function delta(sys,u,v,t, Δt)
             n=mynorm(u-v)*data.v0
         end
-
         psol=solve(sys;inival,embed=dir*range,control,pre,post,delta,store_all=true,mynorm=mynorm,myrnorm=myrnorm)
 
         if dir==1

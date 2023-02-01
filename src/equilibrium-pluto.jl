@@ -670,7 +670,7 @@ calc_QBL(sol,sys)=VoronoiFVM.integrate(sys,spacecharge_and_ysum!,sol)[iφ,1]
 
 # ╔═╡ 77f49da5-ffd2-4148-93a6-f45382ba6d91
 function dlcapsweep_equi(sys;vmax=2*V,molarity=1,nsteps=21, δV=1.0e-3*V,
-    	            verbose=false,max_lureuse=0)
+    	            verbose=false)
     data=sys.physics.data
     set_molarity!(data,molarity)
     update_derived!(data)
@@ -679,35 +679,30 @@ function dlcapsweep_equi(sys;vmax=2*V,molarity=1,nsteps=21, δV=1.0e-3*V,
     c=VoronoiFVM.NewtonControl()
     #	c.damp_growth=1.1
     c.verbose=verbose
-    c.max_lureuse=max_lureuse
     c.tol_round=1.0e-10
     c.max_round=3
     c.damp_initial=0.01
     c.damp_growth=2
     
-    inival=unknowns(sys,inival=0)
-    inival=solve(inival,sys,control=c)
+    inival=solve(sys; inival=0, control=c)
     vstep=vmax/(nsteps-1)
     
     c.damp_initial=1
 
-	function rundlcap(dir)
+    function rundlcap(dir)
 	volts=zeros(0)
 	caps=zeros(0)
-	sol=copy(inival)
-	oldsol=copy(inival)
 	volt=0.0
+        sol=inival
 	for iv=1:nsteps
 	    apply_voltage!(sys,volt)
 	    c.damp_initial=1
-	    solve!(sol,oldsol,sys,control=c)
-	    oldsol.=sol
+	    sol=solve(sys;inival=sol,control=c)
             
 	    Q=calc_QBL(sol,sys)
 	    apply_voltage!(sys,volt+dir*δV)
 	    c.damp_initial=1
-	    solve!(sol,oldsol,sys,control=c)
-	    oldsol.=sol
+	    sol=solve(sys;inival=sol,control=c)
 	    Qδ=calc_QBL(sol,sys)
 	    push!(caps,(Q-Qδ)/(dir*δV))
 	    push!(volts,volt)
