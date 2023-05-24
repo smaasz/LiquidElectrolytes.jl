@@ -88,7 +88,7 @@ function dlcapsweep(sys;voltages=(-1:0.1:1)*ufac"V",δ=1.0e-4,molarity=0.1*ufac"
         @show u[2,1:5]
         @show u[3,1:5]
         @show u[4,1:5]
-        @show chemical_potentials!(zeros(2),u[:,1],data)
+        @show chemical_potentials!(zeros(data.nc),u[:,1],data)
         c0,barc= c0_barc(u[:,1],data)
         @show c0/barc, u[1,1]/barc,u[2,1]/barc
         @error "bailing out at δ=$(δ) ϕ_we=$(data.ϕ_we)V, molarity=$(molarity)"
