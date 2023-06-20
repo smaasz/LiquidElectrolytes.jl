@@ -16,6 +16,7 @@ function showstruct(io::IO,this)
     myround(s::Symbol; kwargs...)=s
     myround(i::Int; kwargs...)=i
     myround(b::Bool; kwargs...)=b
+
     for name in fieldnames(typeof(this))
         println(io,"$(lpad(name,20)) = $(myround.(getfield(this,name),sigdigits=5))")
     end

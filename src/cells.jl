@@ -54,7 +54,7 @@ function bulkbcondition(f,u,bnode,data;region=data.Γ_bulk)
 end
 
 """
-           dlcapweep(sys;voltages=(-1:0.1:1)*ufac"V",
+           dlcapsweep(sys;voltages=(-1:0.1:1)*ufac"V",
                                   δ=1.0e-4,
                                   molarity=0.1*ufac"mol/dm^3",
                                   solver_kwargs...)

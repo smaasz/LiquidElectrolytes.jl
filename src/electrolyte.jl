@@ -9,7 +9,7 @@ abstract type AbstractElectrolyteData end
 """
 $(TYPEDEF)
 
-Data for electrolyte. It is defined using [Parameters.jl](https://github.com/mauro3/Parameters.jl), therefore it
+Data for electrolyte. It is defined using `Base.@kwdef`
 has keyword constructors like
 ```julia
     ElectrolyteData(nc=3,z=[-1,2,1])
@@ -102,7 +102,7 @@ $(TYPEDFIELDS)
     epsreg::Float64=1.0e-20
 end
 
-function Base.show(io::IO, ::MIME"text/plain", this::AbstractElectrolyteData)
+function Base.show(io::IO, this::ElectrolyteData)
     showstruct(io,this)
 end
 
@@ -181,7 +181,7 @@ This gives
 ```
 
 ```math
-c_0= 1/v_0 - \sum_{i=1}^N c_i(\frac{v_i}{v_0}+κ)
+c_0= 1/v_0 - \sum_{i=1}^N c_i(\frac{v_i}{v_0}+κ_i)
 ```
 
 Then we can calculate 
