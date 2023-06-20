@@ -39,10 +39,10 @@ function main(;nref=0,
 
     kwargs=merge(defaults, kwargs) 
 
-    hmin=1.0e-1*nm*2.0^(-nref)
-    hmax=1.0*nm*2.0^(-nref)
-    L=20.0*nm
-    #L=80.0e-5
+    hmin=1.0e-1*ufac"μm"*2.0^(-nref)
+    hmax=1.0*ufac"μm"*2.0^(-nref)
+    #L=20.0*nm
+    L=80.0 * ufac"μm"
     X=geomspace(0,L,hmin,hmax)
     grid=simplexgrid(X)
 
@@ -79,12 +79,15 @@ function main(;nref=0,
     ϕ_pzc = 0.16 * ufac"V"
     
     ikplus      = 1
-    ico2        = 2
-    iohminus    = 3
-    ico         = 4
+    ihco3       = 2
+    ico3        = 3
+    ico2        = 4
+    ico         = 5
+    iohminus    = 6
+    ihplus      = 7
 
     function halfcellbc(f,u,bnode,data)
-        (;nc,Γ_we,Γ_bulk,ϕ_we,ip,iϕ,v,v0,RT)=data
+        (;nc,Γ_we,Γ_bulk,ϕ_we,ip,iϕ,v,v0,RT, ε)=data
 
         bulkbcondition(f,u,bnode,data;region=Γ_bulk)
 
@@ -95,13 +98,13 @@ function main(;nref=0,
             
             # Robin b.c. for the Poisson equation
 
-            boundary_robin!(f, u, bnode, iϕ, C_gap / 78.36, C_gap * (ϕ_we - ϕ_pzc) / 78.36)
+            boundary_robin!(f, u, bnode, iϕ, C_gap / ε, C_gap * (ϕ_we - ϕ_pzc) / ε)
 
             # Flux conditions for CO2 and CO
-            prefactor   = 1.0e5
+            prefactor   = 1.0e8
             γ_CO2       = 1.0
-            a_CO2       = γ_CO2 * u[ico2]
-            θ_free      = 1.0
+            a_CO2       = γ_CO2 * u[ico2] * ufac"dm^3/mol"
+            θ_free      = 0.9999
             
             sigma                           = C_gap * (ϕ_we - u[iϕ] - ϕ_pzc)
             electrochemical_correction      = [-0.000286600929, 0.0297720125]' * [(sigma / ufac"μA/cm^2")^2 , (sigma / ufac"μA/cm^2")] * ufac"eV"
@@ -117,17 +120,17 @@ function main(;nref=0,
             else
                 ϕ_curr = ϕ_we
                 push!(ϕs, ϕ_we)
-                println("$(ϕ_we):$(r)")
+                #println("$(ϕ_we):$(r)")
             end
 
             push!(sigmas, sigma)
             push!(energies, ΔG / (ufac"eV" * ph"N_A"))
             #push!(rs, r)
-            push!(rs, a_CO2)
+            push!(rs, u[ico2] * ufac"dm^3/mol")
 
-            f[ico2] = -r
-            f[ico]  = r
-            f[iohminus] = 2*r
+            f[ico2] = r
+            f[ico]  = -r
+            f[iohminus] = -2*r
 
             # c0,barc=c0_barc(u,data)
             # μfe2=chemical_potential(u[ife2], barc, u[ip], v[ife2]+κ*v0, data)
@@ -140,24 +143,28 @@ function main(;nref=0,
     end
     
     
-    celldata=ElectrolyteData(;nc=4,
-                             z=[1,0,-1,0],
-                             D=[1.957e-9, 1.91e-9, 5.273e-9, 2.23e-9], # from Ringe paper
+    celldata=ElectrolyteData(;nc=7,
+                             z=[1,-1,-2,0,0,-1,1],
+                             D=[1.957e-9, 1.185e-9, 0.923e-9, 1.91e-9, 2.23e-9, 5.273e-9, 9.310e-9] * ufac"m^2/s", # from Ringe paper
                              T=T,
                              eneutral=false,
-                             κ=fill(κ,4),
+                             κ=fill(κ,7),
                              Γ_we=1,
                              Γ_bulk=2,
                              scheme)
 
     (;iϕ::Int,ip::Int)=celldata
     
-    celldata.c_bulk[ikplus]=10^(pH-14.)*mol/dm^3 # due to electroneutrality
-    celldata.c_bulk[ico2]=0.033*mol/dm^3
-    celldata.c_bulk[iohminus]=10^(pH-14.)*mol/dm^3
-    celldata.c_bulk[ico]=0.0*mol/dm^3
+    celldata.c_bulk[ikplus]         = 0.1 * mol/dm^3
+    celldata.c_bulk[ihco3]          = (0.1 - 9.53936e-8) * mol/dm^3
+    celldata.c_bulk[ico3]           = 9.53936e-8 * mol/dm^3
+    celldata.c_bulk[ico2]           = 0.033 * mol/dm^3
+    celldata.c_bulk[ico]            = 0.0 * mol/dm^3
+    celldata.c_bulk[iohminus]       = 10^(pH - 14) * mol/dm^3
+    celldata.c_bulk[ihplus]         = 10^(-pH) * mol/dm^3
 
-    @assert isapprox(celldata.c_bulk'*celldata.z,0, atol=1.0e-12)
+    println(celldata.c_bulk'*celldata.z)
+    @assert isapprox(celldata.c_bulk'*celldata.z,0, atol=1.0e-10)
     
     cell=PNPSystem(grid;bcondition=halfcellbc,celldata)
     
@@ -176,7 +183,6 @@ function main(;nref=0,
     #     return reveal(vis)
     # end
 
-    
     if dlcap ## Calculate double layer capacitances
         
         vis=GridVisualizer(;Plotter,resolution=(500,300),legend=:rt,clear=true,xlabel="φ/V",ylabel="C_dl/(μF/cm^2)")
@@ -193,12 +199,15 @@ function main(;nref=0,
     else     ## Calculate current density-voltage curve
         volts, currs, sols = ivsweep(cell; voltages, ispec=iohminus, kwargs...)
         vis=GridVisualizer(;Plotter, layout=(1,3))
-        scalarplot!(vis[1,1],volts,-currs,color="red",markershape=:utriangle,markersize=7, markevery=10,label="PNP",clear=true,legend=:lt,xlabel="Δϕ/V",ylabel="I/(A/m^2)", yscale=:log)
+        scalarplot!(vis[1,1],volts,currs*ufac"cm^2/mA",color="red",markershape=:utriangle,markersize=7, markevery=10,label="PNP",clear=true,legend=:lt,xlabel="Δϕ/V",ylabel="I/(mA/cm^2)", yscale=:log)
         scalarplot!(vis[1,2], sigmas, energies, color="black",clear=true,xlabel="σ/(μC/cm^s)",ylabel="ΔE/eV")
-        scalarplot!(vis[1,3], ϕs, rs, xlimits=(-1.5,-.60))
+        scalarplot!(vis[1,3], ϕs, rs, xlimits=(-1.5,-.60), yscale=:log, xlabel="Δϕ/V", ylabel="c(CO2)/M")
+        for r in rs
+            println(r)
+        end
         return reveal(vis)
     end
-    
+
     # ## Full calculation
 
     # volts,currs, sols=ivsweep(cell;voltages,ispec=ife2,kwargs...)
