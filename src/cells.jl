@@ -161,10 +161,12 @@ function ivsweep(sys;voltages=(-0.5:0.1:0.5)*ufac"V",ispec=1,solver_kwargs...)
     factory=VoronoiFVM.TestFunctionFactory(sys)
     data=sys.physics.data
     
-    tf=testfunction(factory,[data.Γ_bulk],[data.Γ_we] )
+    tf_bulk=testfunction(factory,[data.Γ_we],[data.Γ_bulk] )
 
-    iplus = zeros(0)
-    iminus = zeros(0)
+    iplus = []
+    iminus = []
+    fplus = []
+    fminus = []
     vminus=[]
     vplus=[]
     sminus=[]
@@ -195,11 +197,14 @@ function ivsweep(sys;voltages=(-0.5:0.1:0.5)*ufac"V",ispec=1,solver_kwargs...)
         end
         
         function post(sol,oldsol, ϕ, Δϕ)
-            I=-integrate(sys,sys.physics.breaction,sol; boundary=true)[:,data.Γ_we]
+            I_react=-integrate(sys,sys.physics.breaction,sol; boundary=true)[:,data.Γ_we]
+            I_bulk=-integrate(sys,tf_bulk,sol)
             if dir>0
-                push!(iplus, I[ispec]*F)
+                push!(iplus, I_react)
+                push!(fplus, I_bulk)
             else
-                push!(iminus, I[ispec]*F)
+                push!(iminus, I_react)
+                push!(fminus, I_bulk)
             end
             ϕprogress += abs(Δϕ)
             @logprogress ϕprogress/allprogress
@@ -220,11 +225,12 @@ function ivsweep(sys;voltages=(-0.5:0.1:0.5)*ufac"V",ispec=1,solver_kwargs...)
             popfirst!(iminus)
             popfirst!(vminus)
             popfirst!(sminus)
+            popfirst!(fminus)
         end
     end
 
 
-    vcat(reverse(vminus),vplus),vcat(reverse(iminus),iplus), vcat(reverse(sminus),splus) 
+    vcat(reverse(vminus),vplus),vcat(reverse(iminus),iplus), vcat(reverse(fminus),fplus),vcat(reverse(sminus),splus)
 end
 
     

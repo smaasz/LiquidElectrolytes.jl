@@ -74,7 +74,8 @@ function main(;nref=0,
             c0,barc=c0_barc(u,data)
             μfe2=chemical_potential(u[ife2], barc, u[ip], v[ife2]+κ*v0, data)
 	    μfe3=chemical_potential(u[ife3], barc, u[ip], v[ife2]+κ*v0, data)
-            r=rrate(R0,β,(μfe2 - μfe3 + Δg - data.eneutral*F*(u[iϕ]-ϕ_we))/RT)
+            A=(μfe2 - μfe3 + Δg - data.eneutral*F*(u[iϕ]-ϕ_we))/RT
+            r=rrate(R0,β,A)
             f[ife2]-=r
             f[ife3]+=r
         end
@@ -105,10 +106,12 @@ function main(;nref=0,
     if compare
 
         celldata.eneutral=false
-	volts,currs, sols=ivsweep(cell;voltages,ispec=ife2,kwargs...)
+	volts,  j_we, j_bulk, sols=ivsweep(cell;voltages,kwargs...)
 
+        currs=[F*j[ife2] for j in j_we]
         celldata.eneutral=true
-        nvolts,ncurrs, nsols=ivsweep(cell;voltages,ispec=ife2,kwargs...)
+        nvolts,j_we, j_bulk, nsols=ivsweep(cell;voltages,ispec=ife2,kwargs...)
+        ncurrs=[F*j[ife2] for j in j_we]
 
         vis=GridVisualizer(;Plotter,resolution=(600,400),clear=true,legend=:lt,xlabel="Δϕ/V",ylabel="I/(A/m^2)")
         scalarplot!(vis,volts,-currs,color="red",markershape=:utriangle,markersize=7, markevery=10,label="PNP")
@@ -120,7 +123,7 @@ function main(;nref=0,
     ## Calculate double layer capacitances
     if dlcap
         
-        vis=GridVisualizer(;Plotter,resolution=(500,300),legend=:rt,clear=true,xlabel="φ/V",ylabel="C_dl/(μF/cm^2)")
+        vis=GridVisualizer(;Plotter,size=(500,300),legend=:rt,clear=true,xlabel="φ/V",ylabel="C_dl/(μF/cm^2)")
         hmol=1/length(molarities)
         for imol=1:length(molarities)
             color=RGB(1-imol/length(molarities),0,imol/length(molarities))
@@ -135,7 +138,11 @@ function main(;nref=0,
     
     ## Full calculation
 
-    volts,currs, sols=ivsweep(cell;voltages,ispec=ife2,kwargs...)
+    volts, j_we, j_bulk, sols=ivsweep(cell;voltages,ispec=ife2,kwargs...)
+
+    currs=[F*j[ife2] for j in j_we]
+
+    
     tsol=VoronoiFVM.TransientSolution(sols,volts)
 
     for it=1:length(tsol.t)

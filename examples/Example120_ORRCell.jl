@@ -91,6 +91,7 @@ function main(;
             A =
                 (4 * μ[ihplus] + μ[io2] - 2μh2o + Δg + eneutral * F * (u[iϕ] - data.ϕ_we)) /
                 (RT)
+
             r = rrate(R0, β, A)
             f[ihplus] -= 4 * r
             f[io2] -= r
@@ -119,10 +120,12 @@ function main(;
     ## Compare electroneutral and double layer cases
     if compare
         celldata.eneutral = false
-        volts, currs, sols = ivsweep(cell; voltages, ispec = io2, kwargs...)
-
+        volts,  j_we, j_bulk, sols = ivsweep(cell; voltages, kwargs...)
+        currs=[F*j[io2] for j in j_we]
+        
         celldata.eneutral = true
-        nvolts, ncurrs, nsols = ivsweep(cell; voltages, ispec = io2, kwargs...)
+        nvolts,  j_we, j_bulk, nsols = ivsweep(cell; voltages, kwargs...)
+        ncurrs=[F*j[io2] for j in j_we]
 
         vis = GridVisualizer(;
             Plotter,
@@ -154,11 +157,12 @@ function main(;
         return reveal(vis)
     end
 
-    vis = GridVisualizer(resolution = (1200, 400), layout = (1, 5), Plotter = PyPlot)
+    vis = GridVisualizer(;Plotter, resolution = (1000, 300), layout = (1, 5))
 
-    volts, currs, sols = ivsweep(cell; voltages, ispec = io2, kwargs...)
+    volts,  j_we, j_bulk, sols = ivsweep(cell; voltages, kwargs...)
     tsol = VoronoiFVM.TransientSolution(sols, volts)
-
+    currs=[F*j[io2] for j in j_we]
+    
     for it = 1:length(tsol.t)
         tsol.u[it][io2, :] /= mol / dm^3
         tsol.u[it][ihplus, :] /= mol / dm^3
