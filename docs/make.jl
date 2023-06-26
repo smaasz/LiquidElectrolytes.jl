@@ -62,6 +62,7 @@ function mkdocs()
                  "Home"=>"index.md",
                  "API"=>"api.md",
                  "Internal API"=>"internal.md",
+                 "Changes" => "changes.md",
                  "Examples" => generated_examples
 
              ])

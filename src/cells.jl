@@ -147,12 +147,23 @@ end
 
 """
        ivsweep(sys;
-                  voltages=(-0.5:0.1:0.5)*ufac"V",
-                                 ispec=1,
-                                 solver_kwargs...)
+                  voltages=(-0.5:0.1:0.5)*ufac"V", solver_kwargs...)
 
-Calculate working electrode current corresponding to rate for species `ispec` for each voltage in `voltages`.
-Returns vector of voltages   and vector of currents.
+Calculate molar reacton rates and bulk flux rates for each voltage in `voltages`.
+Returns:
+- vector `volts` of voltages
+- vector `j_we` of working electrode molar reaction rates in `mol/(m^3*s)`
+- vector `j_bulk` of bulk electrode in/outflow rates in `mol/(m^3*s)`
+- vector `solutions` of solution arrays.
+
+Pre  v0.0.21 there was an `ispec` keyword arg, and the return values
+were `volts, currs, solutions`.
+
+Since v0.0.21, the `currs` vector can be obtained via
+```
+currs = [ j[ispec] for j in j_we]
+```
+
 """
 function ivsweep(sys;voltages=(-0.5:0.1:0.5)*ufac"V",ispec=1,solver_kwargs...)
     ranges=splitz(voltages)
