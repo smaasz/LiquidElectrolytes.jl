@@ -81,16 +81,16 @@ see table \ref{tab:notations}.
 \begin{align}
   -\nabla \varepsilon \nabla \phi&= q\\
   \partial c_i  + \nabla \cdot \mathbf N_i  &=0 & (i=1\dots N)\\
-  \mathbf N_i &= - \frac{D_i}{RT} c_i \left( \nabla \mu_i - \frac{M_i}{M_0}\nabla \mu_0 + z_i F \nabla \phi \right) \label{eq:NP}
+  \mathbf N_i &= - \frac{D_i}{RT} c_i \left( \nabla \mu_i - \frac{M_i}{M_0}\nabla \mu_0 + z_i F \nabla \phi \right)& (i=1\dots N) \label{eq:NP}
 \end{align}
 where $q=F\sum_{i=1}^N z_i c_i$.
-From the momentum balance at zero velocity, the pressure $p$ obeys the relationship $\nabla p = q \nabla \phi$
+From the momentum balance at zero barycentric velocity, the pressure $p$ obeys the relationship $\nabla p = q \nabla \phi$
 which can be replaced \cite{Fuhrmann2015} by :
 \begin{align}
   -\Delta p + \nabla \cdot q \nabla \phi \label{eq:press}
 \end{align}
-The system is closed by the compressibility condition
-\begin{align}
+The system is closed by the incompressibility condition
+\begin{align}\label{eq:incompress}
   \sum_{i=0}^N \bar v_ic_i&=1
 \end{align}
 and the relationship between chemical potentials and concentrations \cite{dreyer2013overcoming} :
@@ -99,6 +99,18 @@ and the relationship between chemical potentials and concentrations \cite{dreyer
 \end{align}
 where $  \bar c = \sum_{i=0}^N  c_i$.
 \end{subequations}
+
+By \eqref{eq:incompress} one can obtain the solvent concentration $c_0$  from the solute concentrations
+$c_1\dots c_N$:
+\begin{align}
+  \label{eq:c0}
+  c_0&=\frac{1}{v_0} -  \sum_{i=1}^N  \frac{\bar v_i}{v_0}c_i
+\end{align}
+The diffusive mass fluxes are defined relative to the barycentric velocity \cite{dreyer2013overcoming,Fuhrmann2015}
+\begin{align}
+  \sum_{i=0}^N M_i\mathbf N_i&=0
+\end{align}
+
 
 
 
@@ -113,9 +125,8 @@ For $i=1\dots N$ we have
             &= \bar v_ip  -\frac{M_i}{M_0}\left(  v_0p + RT \log \frac{c_0}{\bar c}\right)\nonumber\\
             &= \left(\bar v_i-\frac{M_i}{M_0}v_0\right)p - \frac{M_i}{M_0}RT\log \frac{c_0}{\bar c} \label{eq:muex}
 \end{align}
-and express $c_0$ and $\bar c$ in terms of $c_1\dots c_N$
+and express $c_0$ via \eqref{eq:c0} and $\bar c$ in terms of $c_1\dots c_N$
 \begin{align*}
-  c_0&=\frac{1}{v_0} -  \sum_{i=1}^N  \frac{\bar v_i}{v_0}c_i\\
   \bar c &% = \frac{1}{v_0} -  \sum_{i=1}^N \frac{\bar v_i}{v_0}c_i + \sum_{i=1}^N  c_i
           = \frac{1}{v_0} + \sum_{i=1}^N \left(1- \frac{\bar v_i}{v_0}\right) c_i 
 \end{align*}
@@ -134,17 +145,21 @@ method \cite{Fuhrmann2015,GaudeulFuhrmannNM2022}.
   \begin{tabular}{rl}
     $p$ & pressure\\
     $\phi $ &electrostatic potential\\
-    $\mu_i$& species chemical potentials\\
-    $c_i$& species molar concentrations\\
-    $v_i$ & molar volume\\
-    $\kappa_i$ & solvation number\\
+    $\mu_i$& species chemical potential\\
+    $c_i$& species molar concentration\\
+    $N_i$& species molar flux\\
+    $v_i$ & species molar volume\\ 
+    $M_i$ & species molar mass\\
+    $\kappa_i$ & species solvation number\\
     $\bar v_i = v_i + \kappa_i v_0$ & solvated molar volume\\
-    $z_i$ & charge number\\
+    $z_i$ & species charge number\\
     $\varepsilon$& dielectric constant\\
     $F$ & Faraday constant\\
     $R$ & Molar gas constant\\
     $T$ & Temperature
-\end{tabular}
+  \end{tabular}
+  \medskip
+  
   \caption{Notations}
   \label{tab:notations}
 \end{table}
@@ -162,17 +177,17 @@ for the electrostatic potential:
   \phi|_{x=0}=U_{0}, &\quad \phi|_{x=L}=U_{L}
 \end{align}
 For the constituents of the electrolyte, we assume surface reactions which do not
-involve neither the  solvent, nor the metal:
+involve the metal:
 \begin{align}
-  (N_i\cdot \mathbf n)|_{x=0}&=R_i(\mu_1^0\dots\mu_n^0), & (i=1\dots N)\\
-  (N_i\cdot \mathbf n)|_{x=L} &=R_i(\mu_1^L\dots\mu_n^L) & (i=1\dots N).
+  (N_i\cdot \mathbf n)|_{x=0}&=R_i(\mu_0^0\dots\mu_n^0), & (i=1\dots N)\\
+  (N_i\cdot \mathbf n)|_{x=L} &=R_i(\mu_0^L\dots\mu_n^L) & (i=1\dots N).
 \end{align}
 Particular expressions will be discussed later. In addition to the chemical potentials
 of the dissolved species, $R_i$ depend on the electron concentration in the metal
 which is assumed to be constant and thus can be hidden in the constants describing $R_i$.
 Assuming that surface and bulk chemical potentials are equal leads to the equivalences
 \begin{align*}
-  \mu_i^0=\mu_i(0), &\quad \mu_i^L=\mu_i(L) & (i=1\dots N).
+  \mu_i^0=\mu_i(0), &\quad \mu_i^L=\mu_i(L) & (i=0\dots N).
 \end{align*}
 
 In order to fix the integration constant of the pressure, we set
@@ -209,8 +224,8 @@ the Dirichlet boundary conditions for the electrostatic potential from the syste
 But we still keep the reaction boundary conditions:
 \begin{subequations}\label{sys:NNPbc}
 \begin{align}\
-  (N_i\cdot \mathbf n)|_{x=0}&=R_i(\mu_1^0\dots\mu_n^0), & (i=1\dots N)\\
-  (N_i\cdot \mathbf n)|_{x=L} &=R_i(\mu_1^L\dots\mu_n^L) & (i=1\dots N).
+  (N_i\cdot \mathbf n)|_{x=0}&=R_i(\mu_0^0\dots\mu_n^0), & (i=1\dots N)\\
+  (N_i\cdot \mathbf n)|_{x=L} &=R_i(\mu_0^L\dots\mu_n^L) & (i=1\dots N).
 \end{align}
 \end{subequations}
 
@@ -237,8 +252,8 @@ calculate the chemical potentials at the surface entering \eqref{sys:NNPbc} as
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Nernst-Planck-Ohm system}
 
-We assume that species number $1$ belongs to the background electrolyte which
-is inert to  the reactiom, such that $R_1=0$. Further, we assume that 
+We assume that species number $N$ belongs to the background electrolyte which
+is inert to  the reactiom, such that $R_N=0$. Further, we assume that 
 the dilute solution assumption is valid, in particular, $c_0\approx\bar c\approx \mathrm{const}$.
 With constant pressure, this leads to $\mu_i^{ex}=0$ resulting in 
 the classical drift-diffusion expression
@@ -264,13 +279,13 @@ diffusion coefficients are equal, $D_i=D$, one arrives at
 with the boundary conditions
 \begin{subequations}\label{ONPbc}
 \begin{align}
-  -\sigma\nabla\phi \cdot \mathbf n|_{x=0} &= \sum_{i=2}^N Fz_iR_i(\mu_1^0\dots\mu_{N-1}^0)\\
-  (N_i\cdot \mathbf n)|_{x=0}&=R_i(\mu_1^0\dots\mu_{N-1}^0), & (i=1\dots N-1)\\
-  -\sigma\nabla\phi \cdot \mathbf n|_{x=L} &= \sum_{i=1}^{N-1} Fz_iR_i(\mu_1^L\dots\mu_{N-1}^L)\\
-  (N_i\cdot \mathbf n)|_{x=L} &=R_i(\mu_1^L\dots\mu_{N-1}^L) & (i=1\dots N-1)
+  -\sigma\nabla\phi \cdot \mathbf n|_{x=0} &= \sum_{i=2}^N Fz_iR_i(\mu_0^0\dots\mu_{N-1}^0)\\
+  (N_i\cdot \mathbf n)|_{x=0}&=R_i(\mu_0^0\dots\mu_{N-1}^0), & (i=1\dots N-1)\\
+  -\sigma\nabla\phi \cdot \mathbf n|_{x=L} &= \sum_{i=1}^{N-1} Fz_iR_i(\mu_0^L\dots\mu_{N-1}^L)\\
+  (N_i\cdot \mathbf n)|_{x=L} &=R_i(\mu_0^L\dots\mu_{N-1}^L) & (i=1\dots N-1)
 \end{align}
 \end{subequations}
-The surface species concetration is calculated via \eqref{eq:constrel} (with constant $\bar c$) and
+The surface species concentration is calculated via \eqref{eq:constrel} (with constant $\bar c$) and
   \eqref{sys:neubc}.
 The  conductivity $\sigma$ is expressed via the species concentrations as
 \begin{align}
@@ -301,7 +316,7 @@ Mass and charge conservation yield for $k=1\dots K$:
   \sum_{i=-1}^N z_i s_{k,i}&=0
 \end{align}
 where $s_{k,i}=b_{k,i}-a_{k,i}$.
-Thus, with $z_0=-1$ and $n=s_{k,-1}$ is the number of electrons
+Thus, with $z_{-1}=-1$ and $n=s_{k,-1}$ is the number of electrons
 transferred per reaction, we have
 \begin{align}
   \sum_{i=0}^N z_i s_{k,i}&=s_{k,-1}=n
@@ -398,7 +413,7 @@ Reaction:
 \end{align}
 
 \begin{align}
-  RT \mathcal A(\mu_{-1}, \mu_0,\mu_1,\mu_2)&=-4\mu_{-1}-4\mu_1-\mu_2+\mu_0
+  RT \mathcal A(\mu_{-1}, \mu_0,\mu_1,\mu_2)&=-4\mu_{-1}-4\mu_1-\mu_2+2\mu_0
 \end{align}
 
 
