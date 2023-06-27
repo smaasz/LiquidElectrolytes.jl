@@ -182,49 +182,54 @@ function ivsweep(sys;voltages=(-0.5:0.1:0.5)*ufac"V",ispec=1,solver_kwargs...)
     vplus=[]
     sminus=[]
     splus=[]
-    weights=ones(data.nc+2)
-    weights[data.ip]=0
-    mynorm=u->wnorm(u,weights,Inf)
-    myrnorm=u->wnorm(u,weights,1)
+    mynorm=u->wnorm(u,data.weights,Inf)
+    myrnorm=u->wnorm(u,data.weights,1)
     data=electrolytedata(sys)
     data.ϕ_we=0
     control=SolverControl(;verbose=true,
                           handle_exceptions=true,
-                          Δp_min=1.0e-6,
+                          Δp_min=1.0e-3,
                           Δp=1.0e-2,
                           Δp_grow=1.2,
-                          Δu_opt=5.0e-3,
+                          Δu_opt=1.0e-2,
                           solver_kwargs...)
     iϕ=data.iϕ
-    inival = solve(sys;inival=pnpunknowns(sys), solver_kwargs...)
+    @info "Solving for 0V..."
+    inival = solve(sys;inival=pnpunknowns(sys), control)
 
     allprogress=voltages[end]-voltages[begin]
     ϕprogress=0
-    @withprogress for range in ranges
+    for range in ranges
+        @info "IV sweep from $(range[1])V to $(range[end])V..."
         dir=range[end]>range[1] ? 1 : -1
 
-        function pre(sol,ϕ)
-            data.ϕ_we=dir*ϕ
-        end
-        
-        function post(sol,oldsol, ϕ, Δϕ)
-            I_react=-integrate(sys,sys.physics.breaction,sol; boundary=true)[:,data.Γ_we]
-            I_bulk=-integrate(sys,tf_bulk,sol)
-            if dir>0
-                push!(iplus, I_react)
-                push!(fplus, I_bulk)
-            else
-                push!(iminus, I_react)
-                push!(fminus, I_bulk)
+        psol=nothing
+        @withprogress begin
+            
+            function pre(sol,ϕ)
+                data.ϕ_we=dir*ϕ
             end
-            ϕprogress += abs(Δϕ)
-            @logprogress ϕprogress/allprogress
+            
+            function post(sol,oldsol, ϕ, Δϕ)
+                I_react=-integrate(sys,sys.physics.breaction,sol; boundary=true)[:,data.Γ_we]
+                I_bulk=-integrate(sys,tf_bulk,sol)
+                if dir>0
+                    push!(iplus, I_react)
+                    push!(fplus, I_bulk)
+                else
+                    push!(iminus, I_react)
+                    push!(fminus, I_bulk)
+                end
+                ϕprogress += abs(Δϕ)
+                @logprogress ϕprogress/allprogress
+            end
+            
+            function delta(sys,u,v,t, Δt)
+                n=mynorm(u-v)*data.v0
+            end
+            psol=solve(sys;inival,embed=dir*range,control,pre,post,delta,store_all=true,mynorm=mynorm,myrnorm=myrnorm)
+
         end
-        
-        function delta(sys,u,v,t, Δt)
-            n=mynorm(u-v)*data.v0
-        end
-        psol=solve(sys;inival,embed=dir*range,control,pre,post,delta,store_all=true,mynorm=mynorm,myrnorm=myrnorm)
 
         if dir==1
             vplus=psol.t

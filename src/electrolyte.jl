@@ -100,6 +100,13 @@ $(TYPEDFIELDS)
     Regularization parameter used in [`rlog`](@ref)
     """
     epsreg::Float64=1.0e-20
+
+
+    """
+    Species weights for norms in solver control.
+    """
+    weights::Vector{Float64}=[v...,1.0,0.0]
+
 end
 
 function Base.show(io::IO, this::ElectrolyteData)
