@@ -13,7 +13,7 @@ module Example101_DLCap
 using LessUnitful
 using VoronoiFVM,ExtendableGrids,GridVisualize
 using LiquidElectrolytes
-using PyPlot,Colors
+using Colors
 
 
 function main(;voltages=-2:0.01:2,           ## Voltages/V
@@ -21,7 +21,7 @@ function main(;voltages=-2:0.01:2,           ## Voltages/V
 	      nref=0,	                     ## Refinement level
 	      scheme=:μex,	             ## Flux calculation scheme
 	      κ=10.0,                        ## Solvation number
-              Plotter=PyPlot,                ## Plotter
+              Plotter=nothing,               ## Plotter
 	      kwargs...                      ## Solver kwargs
               )
     

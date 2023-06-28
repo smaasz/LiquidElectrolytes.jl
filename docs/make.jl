@@ -1,7 +1,6 @@
 push!(LOAD_PATH,joinpath(@__DIR__,".."))
 @show LOAD_PATH
-ENV["MPLBACKEND"]="agg" 
-using Documenter, LiquidElectrolytes, LessUnitful,Literate
+using Documenter, LiquidElectrolytes, LessUnitful,Literate, CairoMakie
 
 
 function mkdocs()
@@ -56,6 +55,7 @@ function mkdocs()
              modules = [LiquidElectrolytes],
              clean = false, 
              doctest = true,
+             draft = true,
              authors = "J. Fuhrmann",
              repo="https://github.com/j-fu/LiquidElectrolytes.jl/",
              pages=[

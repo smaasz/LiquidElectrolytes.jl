@@ -17,7 +17,7 @@ using LessUnitful
 using ExtendableGrids,GridVisualize
 using VoronoiFVM
 using LiquidElectrolytes
-using PyPlot,Colors
+using Colors
 using StaticArrays
 using InteractiveUtils
 
@@ -31,7 +31,7 @@ function main(;nref=0,
               scheme=:μex,
               xmax=1,
               κ=10.0,
-              Plotter=PyPlot,
+              Plotter=nothing,
               new=false,
               kwargs...)
 
