@@ -119,13 +119,15 @@ function main(;
     ## Compare electroneutral and double layer cases
     if compare
         celldata.eneutral = false
-        volts,  j_we, j_bulk, sols = ivsweep(cell; voltages, kwargs...)
+        tsol, j_we, j_bulk  = ivsweep(cell; voltages, kwargs...)
         currs=[F*j[io2] for j in j_we]
+        volts=tsol.t
         
         celldata.eneutral = true
-        nvolts,  j_we, j_bulk, nsols = ivsweep(cell; voltages, kwargs...)
+        ntsol, j_we, j_bulk  = ivsweep(cell; voltages, kwargs...)
         ncurrs=[F*j[io2] for j in j_we]
-
+        nvolts=ntsol.t
+        
         vis = GridVisualizer(;
             Plotter,
             resolution = (600, 400),
@@ -156,21 +158,16 @@ function main(;
         return reveal(vis)
     end
 
-    vis = GridVisualizer(;Plotter, resolution = (1000, 300), layout = (1, 5))
-
-    volts,  j_we, j_bulk, sols = ivsweep(cell; voltages, kwargs...)
-    tsol = VoronoiFVM.TransientSolution(sols, volts)
-    currs=[F*j[io2] for j in j_we]
+    ## IVsweep
+    vis = GridVisualizer(;Plotter, resolution = (1000, 300), layout = (1, 4))
     
-    for it = 1:length(tsol.t)
-        tsol.u[it][io2, :] /= mol / dm^3
-        tsol.u[it][ihplus, :] /= mol / dm^3
-        tsol.u[it][iso4, :] /= mol / dm^3
-    end
+    tsol, j_we, j_bulk = ivsweep(cell; voltages, kwargs...)
+    currs=[F*j[io2] for j in j_we]
+    volts=tsol.t
 
-    xmax = 3 * nm
+    xmax = 10 * nm
     xlimits = [0, xmax]
-    aspect = 3.5 * xmax / (tsol.t[end] - tsol.t[begin])
+    aspect = 2 * xmax / (tsol.t[end] - tsol.t[begin])
 
     
     scalarplot!(
@@ -186,6 +183,7 @@ function main(;
         vis[1, 2],
         cell,
         tsol;
+        scale= 1.0/(mol/dm^3),
         species = io2,
         aspect,
         xlimits,
@@ -198,23 +196,24 @@ function main(;
         tsol;
         species = ihplus,
         aspect,
+        scale= 1.0/(mol/dm^3),
         xlimits,
         title = "H+",
         colormap = :summer,
     )
-    #    scalarplot!(vis[1,4],cell,tsol;species=iϕ,aspect,xlimits,title="ϕ",colormap=:bwr)
+
     scalarplot!(
         vis[1, 4],
-        tsol[io2, 1, :],
+        tsol[io2, 1, :]*1000,
         volts,
-        label = "O2",
         xlabel = "c",
+        label = "1000 O2",
         color = :green,
         clear = false,
         legend = :rc,
     )
     scalarplot!(
-        vis[1, 5],
+        vis[1, 4],
         tsol[ihplus, 1, :],
         volts,
         title = "c(0)",
@@ -222,9 +221,10 @@ function main(;
         ylabel = "V",
         label = "H+",
         color = :red,
+        clear=false,
     )
     scalarplot!(
-        vis[1, 5],
+        vis[1, 4],
         tsol[iso4, 1, :],
         volts,
         label = "SO4--",
@@ -237,3 +237,16 @@ function main(;
 end
 
 end
+
+#=
+```@example Example120_ORRCell
+Example120_ORRCell.main(Plotter=CairoMakie)
+```
+=#
+
+
+#=
+```@example Example120_ORRCell
+Example120_ORRCell.main(compare=true,Plotter=CairoMakie)
+```
+=#

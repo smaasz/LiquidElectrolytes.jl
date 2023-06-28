@@ -97,7 +97,7 @@ end
 
 #=
 ```@example Example101_DLCap
-Example101_DLCap.main()
+Example101_DLCap.main(Plotter=CairoMakie)
 ```
 =#
 

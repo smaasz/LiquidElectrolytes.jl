@@ -2,6 +2,7 @@ push!(LOAD_PATH,joinpath(@__DIR__,".."))
 @show LOAD_PATH
 using Documenter, LiquidElectrolytes, LessUnitful,Literate, CairoMakie
 
+CairoMakie.activate!(type="svg")
 
 function mkdocs()
     example_jl_dir = joinpath(@__DIR__,"..","examples")
