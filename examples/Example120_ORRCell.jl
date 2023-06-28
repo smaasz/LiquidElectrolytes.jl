@@ -1,4 +1,4 @@
-#=
+#= 
 ```@meta
 Draft=true
 ```
@@ -21,24 +21,25 @@ module Example120_ORRCell
 using ExtendableGrids, GridVisualize
 using VoronoiFVM
 using LiquidElectrolytes
-using PyPlot, Colors
+using Colors
 using StaticArrays
 using LessUnitful
 
 
 function main(;
-    voltages = -1:0.1:1,
-    compare = false,
-    molarity = 0.1,
-    nref = 0,
-    κ = 10.0,
-    eneutral = false,
-    scheme = :μex,
-    Plotter = PyPlot,
-    R0::Float64 = 4.0e-15,
-    epsreg = 1.0e-20,
-    kwargs...,
-)
+              voltages = -1:0.1:1,
+              compare = false,
+              molarity = 0.1,
+              nref = 0,
+              κ = 10.0,
+              vfac = 1.0,
+              eneutral = false,
+              scheme = :μex,
+              Plotter = nothing,
+              R0::Float64 = 4.0e-15,
+              epsreg = 1.0e-20,
+              kwargs...,
+              )
 
     @local_phconstants R N_A e
     @local_unitfactors nm cm μF mol dm s
@@ -71,6 +72,7 @@ function main(;
     z = [1, -2, 0]
     κ = [κ, κ, 0]
 
+    
     function halfcellbc(f, u, bnode, data)
         bulkbcondition(f, u, bnode, data)
         (; iϕ, eneutral, ϕ_we, Γ_we, RT) = data
@@ -89,7 +91,7 @@ function main(;
             end
             μh2o, μ = chemical_potentials!(MVector{4,eltype(u)}(undef), u, data)
             A =
-                (4 * μ[ihplus] + μ[io2] - 2μh2o + Δg + eneutral * F * (u[iϕ] - data.ϕ_we)) /
+                (4 * μ[ihplus] + μ[io2] - 2μh2o + Δg + 4*eneutral * F * (u[iϕ] - data.ϕ_we)) /
                 (RT)
 
             r = rrate(R0, β, A)
@@ -104,6 +106,8 @@ function main(;
     celldata =
         ElectrolyteData(; nc = 3, z, κ, Γ_we = 1, Γ_bulk = 2, eneutral, scheme, epsreg)
 
+    celldata.v*=vfac
+    
     (; iϕ, c_bulk) = celldata
 
 
@@ -173,6 +177,7 @@ function main(;
     xlimits = [0, xmax]
     aspect = 3.5 * xmax / (tsol.t[end] - tsol.t[begin])
 
+    
     scalarplot!(
         vis[1, 1],
         currs,

@@ -324,3 +324,49 @@ function wnorm(u,w,p)
     @views norms=[w[i]*LinearAlgebra.norm(u[i,:],p) for i=1:size(u,1)]
     LinearAlgebra.norm(norms,p)
 end
+
+
+"""
+    isincompressible(cx::Vector,celldata)
+
+Check for incompressibility of concentration vector
+"""
+function isincompressible(cx::Vector,celldata)
+    c0, barc = c0_barc(cx, celldata)
+    v0 = celldata.v0
+    v = celldata.v
+    κx = celldata.κ
+    cv = c0 * v0
+    for i = 1:celldata.nc
+        cv += cx[i] * (v[i] + κx[i] * v0)
+    end
+    cv≈1.0
+end
+
+"""
+    isincompressible(tsol::TransientSolution,celldata)
+
+Check for incompressibility of transient solution
+"""
+function isincompressible(tsol::TransientSolution,celldata)
+     all(cx->isincompressible(cx,celldata),[u[:,i] for u in tsol.u, i in size(tsol,2)])
+end
+
+
+"""
+    iselectroneutral(cx::Vector,celldata)
+
+Check for electroneutrality of concentration vector
+"""
+function iselectroneutral(cx,celldata)
+    isapprox(cx[1:celldata.nc]' * celldata.z, 0, atol = 1.0e-12)
+end
+
+"""
+    iselectroneutral(tsol::TransientSolution,celldata)
+
+Check for electorneutrality of transient solution
+"""
+function iselectroneutral(tsol::TransientSolution,celldata)
+     all(cx->iselectroneutral(cx,celldata),[u[:,i] for u in tsol.u, i in size(tsol,2)])
+end

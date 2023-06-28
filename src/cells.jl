@@ -5,12 +5,12 @@ If range contains zero, split it into two parts, one with values <=0 and one wit
 Otherwise, return the range or its reverse, such that first value always is the one with the smallest absolute value.
 """
 function splitz(range::AbstractRange)
-    if range[1]>=0
+    if range[1] >= 0
         return [range]
-    elseif range[end]<=0
+    elseif range[end] <= 0
         return [reverse(range)]
     else
-        [0:-step(range):range[1],0:step(range):range[end]]
+        [0:-step(range):range[1], 0:step(range):range[end]]
     end
 end
 
@@ -20,16 +20,16 @@ end
 Version of [`splitz(range::AbstractRange)`](@ref) for vectors.
 """
 function splitz(range::Vector)
-    if range[1]>=0
-        return [vcat([0.0],range)]
-    elseif range[end]<=0
-        return [vcat([0.0],reverse(range))]
+    if range[1] >= 0
+        return [vcat([0.0], range)]
+    elseif range[end] <= 0
+        return [vcat([0.0], reverse(range))]
     else
-        for i=1:length(range)
-            if range[i]≈0.0
-                return [ reverse(range[1:i]), range[i:end]]
-            elseif i>1 && range[i-1]<0.0 && range[i]>0.0
-                return [ vcat([0.0],reverse(range[1:i-1])), vcat([0.0],range[i:end])]
+        for i = 1:length(range)
+            if range[i] ≈ 0.0
+                return [reverse(range[1:i]), range[i:end]]
+            elseif i > 1 && range[i-1] < 0.0 && range[i] > 0.0
+                return [vcat([0.0], reverse(range[1:i-1])), vcat([0.0], range[i:end])]
             end
         end
     end
@@ -42,13 +42,13 @@ end
 
 Bulk boundary condition for electrolyte: set potential, pressure and concentrations to bulk values.
 """
-function bulkbcondition(f,u,bnode,data;region=data.Γ_bulk)
-    (; iϕ,ip,nc,ϕ_bulk,p_bulk,c_bulk) = data
-    if bnode.region==region
-        boundary_dirichlet!(f,u,bnode;species=iϕ,region,value=ϕ_bulk)
-        boundary_dirichlet!(f,u,bnode;species=ip,region,value=p_bulk)
-        for ic=1:nc
-            boundary_dirichlet!(f,u,bnode;species=ic,region,value=data.c_bulk[ic])
+function bulkbcondition(f, u, bnode, data; region = data.Γ_bulk)
+    (; iϕ, ip, nc, ϕ_bulk, p_bulk, c_bulk) = data
+    if bnode.region == region
+        boundary_dirichlet!(f, u, bnode; species = iϕ, region, value = ϕ_bulk)
+        boundary_dirichlet!(f, u, bnode; species = ip, region, value = p_bulk)
+        for ic = 1:nc
+            boundary_dirichlet!(f, u, bnode; species = ic, region, value = data.c_bulk[ic])
         end
     end
 end
@@ -66,61 +66,67 @@ Assumptions:
 - Only one double layer in the system - close to working electrode
 - 1D domain
 """
-function dlcapsweep(sys;voltages=(-1:0.1:1)*ufac"V",δ=1.0e-4,molarity=0.1*ufac"mol/dm^3",solver_kwargs...)
-    ranges=splitz(voltages)
+function dlcapsweep(
+    sys;
+    voltages = (-1:0.1:1) * ufac"V",
+    δ = 1.0e-4,
+    molarity = 0.1 * ufac"mol/dm^3",
+    solver_kwargs...,
+)
+    ranges = splitz(voltages)
     vplus = zeros(0)
     cdlplus = zeros(0)
     vminus = zeros(0)
     cdlminus = zeros(0)
-    data=electrolytedata(sys)
-    data.ϕ_we=0
+    data = electrolytedata(sys)
+    data.ϕ_we = 0
 
-    data.c_bulk.=molarity
+    data.c_bulk .= molarity
 
-    iϕ=data.iϕ
-    inival=solve(sys,inival=pnpunknowns(sys))
-    allprogress=sum(length,ranges)
+    iϕ = data.iϕ
+    inival = solve(sys, inival = pnpunknowns(sys))
+    allprogress = sum(length, ranges)
     ϕprogress = 0
-    
-    function show_error(u,δ)
-        @show cond(inv(Diagonal(sys.matrix))*Matrix(sys.matrix))
-        @show u[1,1:5]
-        @show u[2,1:5]
-        @show u[3,1:5]
-        @show u[4,1:5]
-        @show chemical_potentials!(zeros(2),u[:,1],data)
-        c0,barc= c0_barc(u[:,1],data)
-        @show c0/barc, u[1,1]/barc,u[2,1]/barc
+
+    function show_error(u, δ)
+        @show cond(inv(Diagonal(sys.matrix)) * Matrix(sys.matrix))
+        @show u[1, 1:5]
+        @show u[2, 1:5]
+        @show u[3, 1:5]
+        @show u[4, 1:5]
+        @show chemical_potentials!(zeros(2), u[:, 1], data)
+        c0, barc = c0_barc(u[:, 1], data)
+        @show c0 / barc, u[1, 1] / barc, u[2, 1] / barc
         @error "bailing out at δ=$(δ) ϕ_we=$(data.ϕ_we)V, molarity=$(molarity)"
     end
 
-    
-    control=VoronoiFVM.SolverControl(max_round=3, tol_round=1.0e-9;solver_kwargs...)
+
+    control = VoronoiFVM.SolverControl(max_round = 3, tol_round = 1.0e-9; solver_kwargs...)
     @withprogress for range in ranges
         sol = inival
-        success=true
-        for ϕ in range 
+        success = true
+        for ϕ in range
             try
-                data.ϕ_we= ϕ
-                sol=solve(sys;inival=sol, control)
+                data.ϕ_we = ϕ
+                sol = solve(sys; inival = sol, control)
             catch e
                 println(e)
-                show_error(sol,0)
-                success=false
+                show_error(sol, 0)
+                success = false
             end
 
             if !success
                 break
             end
             Q = integrate(sys, sys.physics.reaction, sol)
-            
+
             try
-                data.ϕ_we=ϕ+δ
-                sol=solve(sys;inival=sol, control)
+                data.ϕ_we = ϕ + δ
+                sol = solve(sys; inival = sol, control)
             catch e
                 println(e)
-                show_error(sol,δ)
-                success=false
+                show_error(sol, δ)
+                success = false
             end
             if !success
                 break
@@ -128,21 +134,21 @@ function dlcapsweep(sys;voltages=(-1:0.1:1)*ufac"V",δ=1.0e-4,molarity=0.1*ufac"
             Qδ = integrate(sys, sys.physics.reaction, sol)
             cdl = (Qδ[iϕ] - Q[iϕ]) / δ
 
-            if range[end]>range[1]
+            if range[end] > range[1]
                 push!(vplus, ϕ)
                 push!(cdlplus, cdl)
             else
                 push!(vminus, ϕ)
                 push!(cdlminus, cdl)
             end
-            ϕprogress +=1
-            @logprogress ϕprogress/allprogress
+            ϕprogress += 1
+            @logprogress ϕprogress / allprogress
         end
     end
-    vcat(reverse(vminus),vplus),vcat(reverse(cdlminus),cdlplus) 
+    vcat(reverse(vminus), vplus), vcat(reverse(cdlminus), cdlplus)
 end
 
-    
+
 
 
 """
@@ -150,11 +156,11 @@ end
                   voltages=(-0.5:0.1:0.5)*ufac"V", solver_kwargs...)
 
 Calculate molar reacton rates and bulk flux rates for each voltage in `voltages`.
+
 Returns:
-- vector `volts` of voltages
+- transient solution `tsol` with components `t` (voltages) and `u` (solutions)
 - vector `j_we` of working electrode molar reaction rates in `mol/(m^3*s)`
 - vector `j_bulk` of bulk electrode in/outflow rates in `mol/(m^3*s)`
-- vector `solutions` of solution arrays.
 
 Pre  v0.0.21 there was an `ispec` keyword arg, and the return values
 were `volts, currs, solutions`.
@@ -165,55 +171,61 @@ currs = [ j[ispec] for j in j_we]
 ```
 
 """
-function ivsweep(sys;voltages=(-0.5:0.1:0.5)*ufac"V",ispec=1,solver_kwargs...)
-    ranges=splitz(voltages)
-    F=ph"N_A*e"
-    
-    factory=VoronoiFVM.TestFunctionFactory(sys)
-    data=sys.physics.data
-    
-    tf_bulk=testfunction(factory,[data.Γ_we],[data.Γ_bulk] )
+function ivsweep(sys; voltages = (-0.5:0.1:0.5) * ufac"V", ispec = 1, solver_kwargs...)
+    ranges = splitz(voltages)
+    F = ph"N_A*e"
+
+    factory = VoronoiFVM.TestFunctionFactory(sys)
+    data = sys.physics.data
+
+    tf_bulk = testfunction(factory, [data.Γ_we], [data.Γ_bulk])
 
     iplus = []
     iminus = []
     fplus = []
     fminus = []
-    vminus=[]
-    vplus=[]
-    sminus=[]
-    splus=[]
-    mynorm=u->wnorm(u,data.weights,Inf)
-    myrnorm=u->wnorm(u,data.weights,1)
-    data=electrolytedata(sys)
-    data.ϕ_we=0
-    control=SolverControl(;verbose=true,
-                          handle_exceptions=true,
-                          Δp_min=1.0e-3,
-                          Δp=1.0e-2,
-                          Δp_grow=1.2,
-                          Δu_opt=1.0e-2,
-                          solver_kwargs...)
-    iϕ=data.iϕ
+    vminus = []
+    vplus = []
+    sminus = []
+    splus = []
+    data = electrolytedata(sys)
+    data.ϕ_we = 0
+    control = SolverControl(;
+        verbose = true,
+        handle_exceptions = true,
+        Δp_min = 1.0e-3,
+        Δp = 1.0e-2,
+        Δp_grow = 1.2,
+        Δu_opt = 1.0e-2,
+        unorm = u -> wnorm(u, data.weights, Inf),
+        rnorm = u -> wnorm(u, data.weights, 1),
+        solver_kwargs...,
+    )
+    iϕ = data.iϕ
     @info "Solving for 0V..."
-    inival = solve(sys;inival=pnpunknowns(sys), control)
+    inival = solve(sys; inival = pnpunknowns(sys), control)
 
-    allprogress=voltages[end]-voltages[begin]
-    ϕprogress=0
+    allprogress = voltages[end] - voltages[begin]
+    ϕprogress = 0
     for range in ranges
         @info "IV sweep from $(range[1])V to $(range[end])V..."
-        dir=range[end]>range[1] ? 1 : -1
+        dir = range[end] > range[1] ? 1 : -1
 
-        psol=nothing
+        psol = nothing
         @withprogress begin
-            
-            function pre(sol,ϕ)
-                data.ϕ_we=dir*ϕ
+
+            function pre(sol, ϕ)
+                data.ϕ_we = dir * ϕ
             end
-            
-            function post(sol,oldsol, ϕ, Δϕ)
-                I_react=-integrate(sys,sys.physics.breaction,sol; boundary=true)[:,data.Γ_we]
-                I_bulk=-integrate(sys,tf_bulk,sol)
-                if dir>0
+
+            function post(sol, oldsol, ϕ, Δϕ)
+                I_react =
+                    -integrate(sys, sys.physics.breaction, sol; boundary = true)[
+                        :,
+                        data.Γ_we,
+                    ]
+                I_bulk = -integrate(sys, tf_bulk, sol)
+                if dir > 0
                     push!(iplus, I_react)
                     push!(fplus, I_bulk)
                 else
@@ -221,22 +233,31 @@ function ivsweep(sys;voltages=(-0.5:0.1:0.5)*ufac"V",ispec=1,solver_kwargs...)
                     push!(fminus, I_bulk)
                 end
                 ϕprogress += abs(Δϕ)
-                @logprogress ϕprogress/allprogress
+                @logprogress ϕprogress / allprogress
             end
-            
-            function delta(sys,u,v,t, Δt)
-                n=mynorm(u-v)*data.v0
-            end
-            psol=solve(sys;inival,embed=dir*range,control,pre,post,delta,store_all=true,mynorm=mynorm,myrnorm=myrnorm)
 
+            function delta(sys, u, v, t, Δt)
+                n = wnorm(u, data.weights, Inf) * data.v0
+            end
+
+            psol = solve(
+                sys;
+                inival,
+                embed = dir * range,
+                control,
+                pre,
+                post,
+                delta,
+                store_all = true,
+            )
         end
 
-        if dir==1
-            vplus=psol.t
-            splus=psol.u
+        if dir == 1
+            vplus = psol.t
+            splus = psol.u
         else
-            vminus=-psol.t
-            sminus=psol.u
+            vminus = -psol.t
+            sminus = psol.u
 
             popfirst!(iminus)
             popfirst!(vminus)
@@ -245,8 +266,9 @@ function ivsweep(sys;voltages=(-0.5:0.1:0.5)*ufac"V",ispec=1,solver_kwargs...)
         end
     end
 
-
-    vcat(reverse(vminus),vplus),vcat(reverse(iminus),iplus), vcat(reverse(fminus),fplus),vcat(reverse(sminus),splus)
+    volts = vcat(reverse(vminus), vplus)
+    sols = vcat(reverse(sminus), splus)
+    VoronoiFVM.TransientSolution(sols, volts),
+    vcat(reverse(iminus), iplus),
+    vcat(reverse(fminus), fplus)
 end
-
-    
