@@ -117,9 +117,9 @@ function main(;
 
         currs = [F * j[ife2] for j in j_we]
         celldata.eneutral = true
-        ntsol, j_we, j_bulk = ivsweep(cell; voltages, ispec = ife2, kwargs...)
-        ncurrs = [F * j[ife2] for j in j_we]
-        nvolts = tsol.t
+        ntsol, nj_we, nj_bulk = ivsweep(cell; voltages, ispec = ife2, kwargs...)
+        ncurrs = [F * j[ife2] for j in nj_we]
+        nvolts = ntsol.t
 
         vis = GridVisualizer(;
             Plotter,
@@ -254,7 +254,9 @@ end
 end
 
 #=
-```@example Example110_Fe23Cell
+```@example Example110_Fe23Cell_1
+using Example110_Fe23Cell,CairoMakie # hide
+CairoMakie.activate!(type="svg",visible=false) # hide
 Example110_Fe23Cell.main(Plotter=CairoMakie)
 ```
 =#
@@ -262,7 +264,17 @@ Example110_Fe23Cell.main(Plotter=CairoMakie)
 
 
 #=
-```@example Example110_Fe23Cell
+```@example Example110_Fe23Cell_2
+using Example110_Fe23Cell,CairoMakie # hide
+CairoMakie.activate!(type="svg",visible=false) # hide
+Example110_Fe23Cell.main(compare=true,Plotter=CairoMakie,voltages=-1:0.025:1)
+```
+=#
+
+#=
+```@example Example110_Fe23Cell_3
+using Example110_Fe23Cell,CairoMakie # hide
+CairoMakie.activate!(type="svg",visible=false) # hide
 Example110_Fe23Cell.main(compare=true,Plotter=CairoMakie,voltages=-0.2:0.025:0.2)
 ```
 =#

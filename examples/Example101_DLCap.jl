@@ -97,6 +97,8 @@ end
 
 #=
 ```@example Example101_DLCap
+using Example101_DLCap, CairoMakie # hide
+CairoMakie.activate!(type="svg",visible=false) # hide
 Example101_DLCap.main(Plotter=CairoMakie)
 ```
 =#

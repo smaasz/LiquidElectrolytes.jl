@@ -21,8 +21,11 @@ ElectrolyteData()
 dlcap0(::ElectrolyteData)
 debyelength(::ElectrolyteData)
 chemical_potential
+chemical_potentials!
 c0_barc
 rrate
+iselectroneutral
+isincompressible
 ``` 
 
 ## Discretization system

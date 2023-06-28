@@ -1,8 +1,6 @@
 push!(LOAD_PATH,joinpath(@__DIR__,".."))
-@show LOAD_PATH
-using Documenter, LiquidElectrolytes, LessUnitful,Literate, CairoMakie
-
-CairoMakie.activate!(type="svg")
+push!(LOAD_PATH,joinpath(@__DIR__,"..","examples"))
+using Documenter, LiquidElectrolytes, LessUnitful,Literate, Revise
 
 function mkdocs()
     example_jl_dir = joinpath(@__DIR__,"..","examples")
@@ -47,11 +45,6 @@ function mkdocs()
     generated_examples=joinpath.("examples",readdir(example_md_dir))
     
 
-
-
-
-
-    DocMeta.setdocmeta!(LiquidElectrolytes, :DocTestSetup, :(using LiquidElectrolytes); recursive=true)
     makedocs(sitename="LiquidElectrolytes.jl",
              modules = [LiquidElectrolytes],
              clean = false, 

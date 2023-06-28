@@ -1,5 +1,5 @@
-#= 
-# ORR cell
+#=
+# ORR Half cell
 ([source code](SOURCE_URL))
 
 I-V sweep for Oxygen Reduction
@@ -9,8 +9,8 @@ Methods called:
 - [`ivsweep`](@@ref)
 - [`dlcapsweep`](@@ref)
 - [`PNPSystem`](@@ref)
-
 =#
+
 
 module Example120_ORRCell
 using ExtendableGrids, GridVisualize
@@ -238,15 +238,22 @@ end
 
 end
 
+
 #=
-```@example Example120_ORRCell
+```@example Example120_ORRCell_1
+using Example120_ORRCell,CairoMakie #hide
+CairoMakie.activate!(type="svg",visible=false) # hide
 Example120_ORRCell.main(Plotter=CairoMakie)
 ```
 =#
 
 
+
 #=
-```@example Example120_ORRCell
+```@example Example120_ORRCell_2
+using Example120_ORRCell,CairoMakie #hide
+CairoMakie.activate!(type="svg",visible=false) # hide
 Example120_ORRCell.main(compare=true,Plotter=CairoMakie)
 ```
 =#
+
