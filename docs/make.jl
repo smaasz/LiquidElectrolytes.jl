@@ -55,7 +55,7 @@ function mkdocs()
              modules = [LiquidElectrolytes],
              clean = false, 
              doctest = true,
-             draft = true,
+             draft = false,
              authors = "J. Fuhrmann",
              repo="https://github.com/j-fu/LiquidElectrolytes.jl/",
              pages=[

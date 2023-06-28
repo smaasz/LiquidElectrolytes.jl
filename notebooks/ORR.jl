@@ -40,8 +40,10 @@ if initialized
     using StaticArrays
     using Interpolations
 	using CairoMakie
-	default_plotter!(CairoMakie)
-	CairoMakie.activate!(type="svg")
+	if !haskey(ENV,"PLUTO_CI")
+	  default_plotter!(CairoMakie)
+	  CairoMakie.activate!(type="svg")
+	end
 end
 
 # ╔═╡ 1f5732a6-c15a-4df0-8927-f1e031643d26
