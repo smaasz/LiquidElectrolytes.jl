@@ -3,7 +3,7 @@ using LessUnitful
 using ExtendableGrids,GridVisualize
 using VoronoiFVM
 using LiquidElectrolytes
-using PyPlot,Colors
+using PyPlot,Colors 
 using StaticArrays
 using InteractiveUtils
 
@@ -27,7 +27,7 @@ function main(;nref=0,
     @local_phconstants N_A e R ε_0
     F=N_A*e
     c=299792458 * ufac"m/s"
-    @local_unitfactors cm μF mol dm s mA A nm
+    @local_unitfactors cm μF mol dm s mA A nm bar
 
 
     
@@ -56,7 +56,6 @@ function main(;nref=0,
 
     ϕs = []
     rs = []
-    ϕ_curr = 100.0
 
     T   = 273.15 + 25 * ufac"K"
     pH  = 6.8
@@ -86,6 +85,8 @@ function main(;nref=0,
     iohminus    = 6
     ihplus      = 7
 
+
+    ϕ_curr = Ref(100.0)
     function halfcellbc(f,u,bnode,data)
         (;nc,Γ_we,Γ_bulk,ϕ_we,ip,iϕ,v,v0,RT, ε)=data
 
@@ -101,26 +102,27 @@ function main(;nref=0,
             boundary_robin!(f, u, bnode, iϕ, C_gap / ε, C_gap * (ϕ_we - ϕ_pzc) / ε)
 
             # Flux conditions for CO2 and CO
-            prefactor   = 1.0e8
+            prefactor   = 1.0e13
             γ_CO2       = 1.0
-            a_CO2       = γ_CO2 * u[ico2] * ufac"dm^3/mol"
+            a_CO2       = γ_CO2 * u[ico2] / Hcp_CO2 / bar # * ufac"dm^3/mol" #
             θ_free      = 0.9999
+            S           = 9.61e-5 / N_A * (1.0e10)^2 * ufac"mol/m^2"
             
             sigma                           = C_gap * (ϕ_we - u[iϕ] - ϕ_pzc)
             electrochemical_correction      = [-0.000286600929, 0.0297720125]' * [(sigma / ufac"μA/cm^2")^2 , (sigma / ufac"μA/cm^2")] * ufac"eV"
             
             ΔG      = (E_ads_CO2 + harmonic_adsorbate_correction + electrochemical_correction) * ph"N_A"
             
-            r = prefactor * a_CO2 * θ_free * exp(-ΔG / RT - 2.3*pH)
+            r = prefactor * a_CO2 * θ_free * exp(-ΔG / RT - 2.3*pH) * S
             
-            if ϕ_we == ϕ_curr
+            if ϕ_we == ϕ_curr[]
                 pop!(sigmas)
                 pop!(energies)
                 pop!(rs)
             else
-                ϕ_curr = ϕ_we
+                ϕ_curr[] = ϕ_we
                 push!(ϕs, ϕ_we)
-                #println("$(ϕ_we):$(r)")
+                println("$(ϕ_we):$(prefactor*exp(-ΔG / RT - 2.3*pH))")
             end
 
             push!(sigmas, sigma)
@@ -132,12 +134,6 @@ function main(;nref=0,
             f[ico]  = -r
             f[iohminus] = -2*r
 
-            # c0,barc=c0_barc(u,data)
-            # μfe2=chemical_potential(u[ife2], barc, u[ip], v[ife2]+κ*v0, data)
-	        # μfe3=chemical_potential(u[ife3], barc, u[ip], v[ife2]+κ*v0, data)
-            # r=rrate(R0,β,(μfe2 - μfe3 + Δg - data.eneutral*F*(u[iϕ]-ϕ_we))/RT)
-            # f[ife2]-=r
-            # f[ife3]+=r
         end
         nothing
     end
@@ -198,12 +194,12 @@ function main(;nref=0,
         return  reveal(vis)
     else     ## Calculate current density-voltage curve
         volts, currs, sols = ivsweep(cell; voltages, ispec=iohminus, kwargs...)
-        vis=GridVisualizer(;Plotter, layout=(1,3))
-        scalarplot!(vis[1,1],volts,currs*ufac"cm^2/mA",color="red",markershape=:utriangle,markersize=7, markevery=10,label="PNP",clear=true,legend=:lt,xlabel="Δϕ/V",ylabel="I/(mA/cm^2)", yscale=:log)
-        scalarplot!(vis[1,2], sigmas, energies, color="black",clear=true,xlabel="σ/(μC/cm^s)",ylabel="ΔE/eV")
-        scalarplot!(vis[1,3], ϕs, rs, xlimits=(-1.5,-.60), yscale=:log, xlabel="Δϕ/V", ylabel="c(CO2)/M")
-        for r in rs
-            println(r)
+        vis=GridVisualizer(;Plotter, layout=(2,1))
+        scalarplot!(vis[1,1], volts, currs*ufac"cm^2/mA",color="red",markershape=:utriangle,markersize=7, markevery=10,label="PNP",clear=true,legend=:lt,xlabel="Δϕ/V",ylabel="I/(mA/cm^2)", yscale=:log)
+        #scalarplot!(vis[2,1], sigmas, energies, color="black",clear=true,xlabel="σ/(μC/cm^s)",ylabel="ΔE/eV")
+        scalarplot!(vis[2,1], ϕs, rs, xlimits=(-1.5,-0.6), yscale=:log, xlabel="Δϕ/V", ylabel="c(CO2)/M")
+        for curr in currs
+            println(curr)
         end
         return reveal(vis)
     end

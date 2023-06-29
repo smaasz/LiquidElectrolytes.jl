@@ -2,7 +2,7 @@
 # Fe redox half cell
 ([source code](SOURCE_URL))
 
-I-V sweep for ``Fe^{2+} \to Fe^{2+} + e^-``
+I-V sweep for ``Fe^{2+} \to Fe^{3+} + e^-``
 
 Methods called:
 - [`ElectrolyteData`](@@ref)
