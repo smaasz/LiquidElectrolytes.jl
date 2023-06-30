@@ -21,11 +21,14 @@ $(TYPEDFIELDS)
     "Number of ionic species."
     nc::Int=2
     
+    "Number of surface species"
+    na::Int=0
+
     "Potential index in species list."
-    iϕ::Int=nc+1
+    iϕ::Int=nc+na+1
     
     "Pressure index in species list"
-    ip::Int=nc+2
+    ip::Int=nc+na+2
     
     "Mobility coefficient"
     D::Vector{Float64}=fill(2.0e-9*ufac"m^2/s",nc) 
