@@ -183,6 +183,7 @@ function PNPSystem(grid;celldata=ElectrolyteData(),bcondition=default_bcondition
     for ia = celldata.nc+1:celldata.nc+celldata.na
         enable_boundary_species!(sys, ia, [celldata.Γ_we])
     end
+    sys
 end
 
 """
