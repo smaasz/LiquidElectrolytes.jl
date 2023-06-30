@@ -169,7 +169,7 @@ function ivsweep(sys;voltages=(-0.5:0.1:0.5)*ufac"V",ispec=1,solver_kwargs...)
     vplus=[]
     sminus=[]
     splus=[]
-    weights=ones(data.nc+2)
+    weights=ones(data.nc+data.na+2)
     weights[data.ip]=0
     mynorm=u->wnorm(u,weights,Inf)
     myrnorm=u->wnorm(u,weights,1)
