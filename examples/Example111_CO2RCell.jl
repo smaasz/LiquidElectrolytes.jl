@@ -33,7 +33,7 @@ def get_thermal_correction_ideal_gas(T, frequencies, symmetrynumber, geometry, s
 function main(;nref=0,
               # compare=false,
               # eneutral::Bool=false,
-              voltages=(-1.5:0.1:-0.7)*ufac"V",
+              voltages=(-1.5:0.1:-0.6)*ufac"V",
               dlcap=false,
               molarities=[0.001,0.01,0.1,1],
               scheme=:μex,
@@ -125,6 +125,8 @@ function main(;nref=0,
     )
 
     ## thermodynamics corrections
+    thermo_corrections = Dict(zip(keys(E_f), zeros(length(E_f))))
+
     ideal_gas_params = Dict(
         "H2O_g" => (2, "nonlinear", 0, "H2O"),
         "CO_g" => (1, "linear", 0, "CO"),
@@ -134,21 +136,18 @@ function main(;nref=0,
     ### ideal gases
     for sp in bulk_species
         if sp ∉ ["OH_g", "ele_g"]
-            E_f[sp] += py"get_thermal_correction_ideal_gas"(T, frequencies[sp], ideal_gas_params[sp]...) * eV
+            thermo_corrections[sp] += py"get_thermal_correction_ideal_gas"(T, frequencies[sp], ideal_gas_params[sp]...) * eV
         end
     end
 
     ### harmonic adsorbates
     for sp ∈ surface_species
-        E_f[sp] += py"get_thermal_correction_adsorbate"(T, frequencies[sp]) * eV
+        thermo_corrections[sp] += py"get_thermal_correction_adsorbate"(T, frequencies[sp]) * eV
+        println("$sp: $(E_f[sp] / eV)")
     end
 
-    ## electrochemical corrections
-    # G_H2O       = E_f["H2O_g"]
-    # G_H2        = E_f["H2_g"]
-    # G_H         = 0.5 * G_H2 - .0592 * pH / 298.14 * T * eV
-    # G_OH        = G_H2O - G_H
-    # E_f["OH_g"] = G_OH
+    ### BEP scaling for transition states
+    thermo_corrections["COOH-H2O-ele_t"] += (thermo_corrections["COOH*_t"] + thermo_corrections["CO*_t"]) / 2
 
 
 
@@ -189,15 +188,38 @@ function main(;nref=0,
             boundary_robin!(f, u, bnode, iϕ, C_gap / ε, C_gap * (ϕ_we - ϕ_pzc) / ε)
 
             # compute corrections due to surface charge densities
+            electro_corrections = Dict(zip(keys(E_f), zeros(Tval, length(E_f))))
+
+            ## simple_electrochemical
+            #electro_corrections["ele_g"] -= (ϕ_we - (ϕ_we - u[iϕ])) * eV
+            electro_corrections["ele_g"] -= ϕ_we * eV
+            #electro_corrections["COOH-H2O-ele_t"] += (-u[iϕ] + 0.5 * (u[iϕ] - ϕ_pzc)) * eV
+            electro_corrections["COOH-H2O-ele_t"] += (-ϕ_we + 0.5 * ϕ_we) * eV
+
+            ## hbond_electrochemical
+            electro_corrections["COOH*_t"] += -0.25 * eV
+            electro_corrections["CO2*_t"] += 0.0 * eV
+            electro_corrections["CO*_t"] += -0.1 * eV
+
+            ## hbond_surface_charge_density
             sigma = C_gap * (ϕ_we - u[iϕ] - ϕ_pzc)
-            G_f = Dict(zip([bulk_species; surface_species; transition_state], zeros(Tval, nc + na + length(transition_state))))
+            #sigma = C_gap *(ϕ_we - ϕ_pzc)
             for sp in surface_species
-                G_f[sp] = E_f[sp] + electro_correction_params[sp]' * [sigma^2, sigma] * eV
+                electro_corrections[sp] += electro_correction_params[sp]' * [sigma^2, sigma] * eV
             end
-            for sp in bulk_species
-                G_f[sp] = E_f[sp]
+
+            ## _get_echem_corrections
+            G_H2O       = E_f["H2O_g"] + thermo_corrections["H2O_g"]
+            G_H2        = E_f["H2_g"] + thermo_corrections["H2_g"]
+            G_H         = 0.5 * G_H2 - .0592 * pH / 298.14 * T * eV
+            G_OH        = G_H2O - G_H
+            #thermo_corrections["OH_g"] += G_OH
+
+            G_f = Dict(zip([bulk_species; surface_species; transition_state], zeros(Tval, nc + na + length(transition_state))))
+            for sp in [bulk_species; surface_species; transition_state]
+                G_f[sp] += E_f[sp] + thermo_corrections[sp] + electro_corrections[sp]
             end
-            
+
 
             # rate constants
             G_IS = zeros(Tval, 4)
@@ -254,8 +276,8 @@ function main(;nref=0,
             rates = zeros(Tval, 4)
 
             rates[1] = kf[1] * (u[ico2] / Hcp_CO2 / bar) * θ_free^2 - kr[1] * (u[ico2_ad] )
-            rates[2] = kf[2] * (u[ico2_ad] ) * 1.0 * 1.0 - kr[2] * (u[icooh_ad] ) * (u[iohminus] )
-            rates[3] = kf[3] * (u[icooh_ad] )* (u[iohminus] ) * 1.0 * 1.0 - kr[3] * (u[ico_ad] ) * 1.0 * (u[iohminus] ) * θ_free
+            rates[2] = kf[2] * (u[ico2_ad] ) * 1.0 * 1.0 - kr[2] * (u[icooh_ad] ) * (u[iohminus])
+            rates[3] = kf[3] * (u[icooh_ad] ) * 1.0 * 1.0 - kr[3] * (u[ico_ad] ) * 1.0 * (u[iohminus]) * θ_free
             rates[4] = kf[4] * (u[ico_ad] )  - kr[4] * (u[ico] / Hcp_CO / bar) * θ_free
 
             # for i = 1:4
