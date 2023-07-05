@@ -13,7 +13,7 @@ using PyCall
 function main(;nref=0,
               # compare=false,
               # eneutral::Bool=false,
-              voltages=(-1.5:0.1:-0.7)*ufac"V",
+              voltages=(-1.5:0.1:-0.6)*ufac"V",
               dlcap=false,
               # R0=1.0e-10,
               molarities=[0.001,0.01,0.1,1],
@@ -198,8 +198,8 @@ function main(;nref=0,
         scalarplot!(vis[1,1], volts, currs*ufac"cm^2/mA",color="red",markershape=:utriangle,markersize=7, markevery=10,label="PNP",clear=true,legend=:lt,xlabel="Δϕ/V",ylabel="I/(mA/cm^2)", yscale=:log)
         #scalarplot!(vis[2,1], sigmas, energies, color="black",clear=true,xlabel="σ/(μC/cm^s)",ylabel="ΔE/eV")
         scalarplot!(vis[2,1], ϕs, rs, xlimits=(-1.5,-0.6), yscale=:log, xlabel="Δϕ/V", ylabel="c(CO2)/M")
-        for curr in currs
-            println(curr)
+        for (volt,curr) in zip(volts,currs)
+            println("$volt, $curr")
         end
         return reveal(vis)
     end
