@@ -206,9 +206,8 @@ function pnpunknowns(sys)
     for ic=1:nc
         @views u[ic,:] .= c_bulk[ic]
     end
-    bgrid = subgrid(sys.grid, [Γ_we], boundary=true)
     for ia = nc+1:nc+na
-        view(u[ia,:], bgrid) .= 0
+        @views u[ia, :] .= 0
     end
     u
 end
