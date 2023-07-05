@@ -31,10 +31,7 @@ def get_thermal_correction_ideal_gas(T, frequencies, symmetrynumber, geometry, s
 """
 
 function main(;nref=0,
-              # compare=false,
-              # eneutral::Bool=false,
               voltages=(-1.5:0.1:-0.6)*ufac"V",
-              dlcap=false,
               molarities=[0.001,0.01,0.1,1],
               scheme=:μex,
               xmax=1,
@@ -149,12 +146,12 @@ function main(;nref=0,
     ### BEP scaling for transition states
     thermo_corrections["COOH-H2O-ele_t"] += (thermo_corrections["COOH*_t"] + thermo_corrections["CO*_t"]) / 2
 
-
-
-    # ### corrections for the adsorbate energies due to different surface charge densities
-    # for sp in surface_species
-    #     E_f[sp] += 0.0
-    # end
+    ## _get_echem_corrections
+    G_H2O       = E_f["H2O_g"] + thermo_corrections["H2O_g"]
+    G_H2        = E_f["H2_g"] + thermo_corrections["H2_g"]
+    G_H         = 0.5 * G_H2 - .0592 * pH / 298.14 * T * eV
+    G_OH        = G_H2O - G_H
+    thermo_corrections["OH_g"] += G_OH
 
 
     C_gap = 20 * ufac"μF/cm^2"
@@ -172,7 +169,6 @@ function main(;nref=0,
     icooh_ad    = 10
 
 
-    ϕ_curr = Ref(100.0)
     function halfcellbc(f,u::VoronoiFVM.BNodeUnknowns{Tval, Tv, Tc, Tp, Ti}, bnode,data) where {Tval, Tv, Tc, Tp, Ti}
         (;nc,na,Γ_we,Γ_bulk,ϕ_we,ip,iϕ,v,v0,T, RT, ε)=data
 
@@ -208,12 +204,6 @@ function main(;nref=0,
                 electro_corrections[sp] += electro_correction_params[sp]' * [sigma^2, sigma] * eV
             end
 
-            ## _get_echem_corrections
-            G_H2O       = E_f["H2O_g"] + thermo_corrections["H2O_g"]
-            G_H2        = E_f["H2_g"] + thermo_corrections["H2_g"]
-            G_H         = 0.5 * G_H2 - .0592 * pH / 298.14 * T * eV
-            G_OH        = G_H2O - G_H
-            #thermo_corrections["OH_g"] += G_OH
 
             G_f = Dict(zip([bulk_species; surface_species; transition_state], zeros(Tval, nc + na + length(transition_state))))
             for sp in [bulk_species; surface_species; transition_state]
@@ -250,12 +240,8 @@ function main(;nref=0,
             G_FS[3] = G_f["CO*_t"] + G_f["H2O_g"] + G_f["OH_g"] + 0.0
             G_TS[3] = G_f["COOH-H2O-ele_t"]
 
-            # println("$(G_f["CO*_t"]), $(G_f["H2O_g"]), $(G_f["OH_g"])")
-
             kf[3] = 1.0e13 * exp(-(G_TS[3] - G_IS[3]) / (k_B * T))
             kr[3] = 1.0e13 * exp(-(G_TS[3] - G_FS[3]) / (k_B * T))
-
-            # println("$(ForwardDiff.value(kr[3]))")
 
             # 'CO*_t <-> CO_g + *_t',	                      #4
             G_IS[4] = G_f["CO*_t"]
@@ -280,15 +266,8 @@ function main(;nref=0,
             rates[3] = kf[3] * (u[icooh_ad] ) * 1.0 * 1.0 - kr[3] * (u[ico_ad] ) * 1.0 * (u[iohminus]) * θ_free
             rates[4] = kf[4] * (u[ico_ad] )  - kr[4] * (u[ico] / Hcp_CO / bar) * θ_free
 
-            # for i = 1:4
-            #     rates[i] *= 1000
-            # end
-
-            println("rate constants: $(ForwardDiff.value.(kf)) and $(ForwardDiff.value.(kr))")
+            #println("rate constants: $(ForwardDiff.value.(kf)) and $(ForwardDiff.value.(kr))")
             println("rates: $(ForwardDiff.value.(rates))")
-            # println("type of rates: $(typeof(rates))")
-            # println("type of u: $(typeof(u))")
-            # println("type Tval $Tval")
 
             # bulk species
             f[ico] += -rates[4] * S
@@ -299,33 +278,6 @@ function main(;nref=0,
             f[ico2_ad] += -rates[1] + rates[2]
             f[ico_ad] += -rates[3] + rates[4]
             f[icooh_ad] += -rates[2] + rates[3]
-            
-            
-            # sigma                           = C_gap * (ϕ_we - u[iϕ] - ϕ_pzc)
-            # electrochemical_correction      = [-0.000286600929, 0.0297720125]' * [(sigma / ufac"μA/cm^2")^2 , (sigma / ufac"μA/cm^2")] * ufac"eV"
-            
-            # ΔG      = (E_ads_CO2 + harmonic_adsorbate_correction + electrochemical_correction) * ph"N_A"
-            
-            # r = prefactor * a_CO2 * θ_free * exp(-ΔG / RT - 2.3*pH) * S
-            
-            # if ϕ_we == ϕ_curr[]
-            #     pop!(sigmas)
-            #     pop!(energies)
-            #     pop!(rs)
-            # else
-            #     ϕ_curr[] = ϕ_we
-            #     push!(ϕs, ϕ_we)
-            #     println("$(ϕ_we):$(prefactor*exp(-ΔG / RT - 2.3*pH))")
-            # end
-
-            # push!(sigmas, sigma)
-            # push!(energies, ΔG / (ufac"eV" * ph"N_A"))
-            # #push!(rs, r)
-            # push!(rs, u[ico2] * ufac"dm^3/mol")
-
-            # f[ico2] = r
-            # f[ico]  = -r
-            # f[iohminus] = -2*r
 
         end
         nothing
@@ -353,50 +305,20 @@ function main(;nref=0,
     celldata.c_bulk[iohminus]       = 10^(pH - 14) * mol/dm^3
     celldata.c_bulk[ihplus]         = 10^(-pH) * mol/dm^3
 
-    println(celldata.c_bulk'*celldata.z)
     @assert isapprox(celldata.c_bulk'*celldata.z,0, atol=1.0e-10)
     
     cell=PNPSystem(grid;bcondition=halfcellbc,celldata)
     
-    ## Compare electroneutral and double layer cases
-    # if compare
-
-    #     celldata.eneutral=false
-	# volts,currs, sols=ivsweep(cell;voltages,ispec=ife2,kwargs...)
-
-    #     celldata.eneutral=true
-    #     nvolts,ncurrs, nsols=ivsweep(cell;voltages,ispec=ife2,kwargs...)
-
-    #     vis=GridVisualizer(;Plotter,resolution=(600,400),clear=true,legend=:lt,xlabel="Δϕ/V",ylabel="I/(A/m^2)")
-    #     scalarplot!(vis,volts,-currs,color="red",markershape=:utriangle,markersize=7, markevery=10,label="PNP")
-    #     scalarplot!(vis,nvolts,-ncurrs,clear=false,color=:green,markershape=:none,label="NNP")
-    #     return reveal(vis)
-    # end
-
-    if dlcap ## Calculate double layer capacitances
         
-        vis=GridVisualizer(;Plotter,resolution=(500,300),legend=:rt,clear=true,xlabel="φ/V",ylabel="C_dl/(μF/cm^2)")
-        hmol=1/length(molarities)
-        for imol=1:length(molarities)
-            color=RGB(1-imol/length(molarities),0,imol/length(molarities))
-	    volts,caps=dlcapsweep(cell;voltages,molarity=molarities[imol],kwargs...)
-	    scalarplot!(vis,volts,caps/(μF/cm^2);
-                        color,
-		        clear=false,
-                        label="$(molarities[imol])M")
-        end
-        return  reveal(vis)
-    else     ## Calculate current density-voltage curve
-        volts, currs, sols = ivsweep(cell; voltages, ispec=iohminus, kwargs...)
-        vis=GridVisualizer(;Plotter, layout=(1,1))
-        scalarplot!(vis[1,1], volts, currs*ufac"cm^2/mA",color="red",markershape=:utriangle,markersize=7, markevery=10,label="PNP",clear=true,legend=:lt,xlabel="Δϕ/V",ylabel="I/(mA/cm^2)", yscale=:log)
-        #scalarplot!(vis[2,1], sigmas, energies, color="black",clear=true,xlabel="σ/(μC/cm^s)",ylabel="ΔE/eV")
-        #scalarplot!(vis[2,1], ϕs, rs, xlimits=(-1.5,-0.6), yscale=:log, xlabel="Δϕ/V", ylabel="c(CO2)/M")
-        for curr in currs
-            println(curr)
-        end
-        return reveal(vis)
+    volts, currs, sols = ivsweep(cell; voltages, ispec=iohminus, kwargs...)
+    vis=GridVisualizer(;Plotter, layout=(1,1))
+    scalarplot!(vis[1,1], volts, currs*ufac"cm^2/mA",color="red",markershape=:utriangle,markersize=7, markevery=10,label="PNP",clear=true,legend=:lt,xlabel="Δϕ/V",ylabel="I/(mA/cm^2)", yscale=:log)
+    #scalarplot!(vis[2,1], sigmas, energies, color="black",clear=true,xlabel="σ/(μC/cm^s)",ylabel="ΔE/eV")
+    #scalarplot!(vis[2,1], ϕs, rs, xlimits=(-1.5,-0.6), yscale=:log, xlabel="Δϕ/V", ylabel="c(CO2)/M")
+    for (volt, curr) in zip(volts, currs)
+        println("$volt,$curr")
     end
+    return reveal(vis)
 
     # ## Full calculation
 
