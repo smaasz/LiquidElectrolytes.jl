@@ -1,4 +1,4 @@
-module Example_CO2R
+module Example111_CO2RCell
 using LessUnitful
 using ExtendableGrids,GridVisualize
 using VoronoiFVM
@@ -57,7 +57,6 @@ function main(;nref=0,
 
     hmin=1.0e-1*ufac"μm"*2.0^(-nref)
     hmax=1.0*ufac"μm"*2.0^(-nref)
-    #L=20.0*nm
     L=80.0 * ufac"μm"
     X=geomspace(0,L,hmin,hmax)
     grid=simplexgrid(X)
@@ -319,41 +318,12 @@ function main(;nref=0,
         println("$volt,$curr")
     end
     return reveal(vis)
-
-    # ## Full calculation
-
-    # volts,currs, sols=ivsweep(cell;voltages,ispec=ife2,kwargs...)
-    # tsol=VoronoiFVM.TransientSolution(sols,volts)
-
-    # for it=1:length(tsol.t)
-    #     tsol.u[it][ife2,:]/=mol/dm^3
-    #     tsol.u[it][ife3,:]/=mol/dm^3
-    # end
-
-    # xmax=xmax*nm
-    # xlimits=[0,xmax]
-    # vis=GridVisualizer(;Plotter,resolution=(1200,400),layout=(1,5),clear=true)
-    # aspect=3.5*xmax/(tsol.t[end]-tsol.t[begin])
-    # scalarplot!(vis[1,1],F*currs/(mA/cm^2),volts,markershape=:none,title="IV",xlabel="I",ylabel="ϕ")
-    # scalarplot!(vis[1,2],cell,tsol;species=ife2,aspect,xlimits,title="Fe2+",colormap=:summer,ylabel="ϕ")
-    # scalarplot!(vis[1,3],cell,tsol;species=ife3,aspect,xlimits,title="Fe3+",colormap=:summer,ylabel="ϕ")
-    # scalarplot!(vis[1,4],cell,tsol;species=iϕ,aspect,xlimits,title="ϕ",colormap=:bwr,ylabel="ϕ")
-    # scalarplot!(vis[1,5],cell,tsol;species=ip,aspect,xlimits,title="p",colormap=:summer,ylabel="ϕ")
-
-    # reveal(vis)
 end
 
 end
 
 #=
-```@example Example110_Fe23Cell
-Example110_Fe23Cell.main()
-```
-=#
-
-
-#=
-```@example Example110_Fe23Cell
-Example110_Fe23Cell.main(compare=true)
+```@example Example111_CO2RCell
+Example111_CO2RCell.main()
 ```
 =#
