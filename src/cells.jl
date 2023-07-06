@@ -177,7 +177,6 @@ function ivsweep(sys; voltages = (-0.5:0.1:0.5) * ufac"V", ispec = 1, solver_kwa
 
     factory = VoronoiFVM.TestFunctionFactory(sys)
     data = sys.physics.data
-
     tf_bulk = testfunction(factory, [data.Γ_we], [data.Γ_bulk])
 
     iplus = []

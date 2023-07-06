@@ -11,6 +11,16 @@ function pnpstorage(f, u, node, electrolyte)
     end
 end
 
+"""
+    pnpbstorage(f, u, node, electrolyte)
+
+Finite volume boundary storage term
+"""
+function pnpbstorage(f, u, node, electrolyte)
+    for ia = electrolyte.nc+1:electrolyte.nc+electrolyte.na
+        f[ia] = u[ia]
+    end
+end
 
 """
     pnpreaction(f, u, node, electrolyte)            
@@ -170,6 +180,10 @@ function PNPSystem(grid;celldata=ElectrolyteData(),bcondition=default_bcondition
                           species=[ 1:celldata.nc..., celldata.iϕ,celldata.ip],
                           kwargs...
                           )
+    for ia = celldata.nc+1:celldata.nc+celldata.na
+        enable_boundary_species!(sys, ia, [celldata.Γ_we])
+    end
+    sys
 end
 
 """
@@ -185,12 +199,15 @@ electrolytedata(sys)=sys.physics.data
 Return vector of unknowns initialized with bulk data.
 """
 function pnpunknowns(sys)
-    (; iϕ,ip,nc,c_bulk) = electrolytedata(sys)
+    (; iϕ,ip,nc,na,c_bulk, Γ_we) = electrolytedata(sys)
     u=unknowns(sys)
     @views u[iϕ,:] .= 0
     @views u[ip,:] .= 0
     for ic=1:nc
         @views u[ic,:] .= c_bulk[ic]
+    end
+    for ia = nc+1:nc+na
+        @views u[ia, :] .= 0
     end
     u
 end
