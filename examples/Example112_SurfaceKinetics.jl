@@ -8,33 +8,11 @@ using StaticArrays
 using InteractiveUtils
 using ForwardDiff
 
-ENV["PYCALL_JL_RUNTIME_PYTHON"] = Sys.which("python3")
-using PyCall
-
-py"""
-from ase.thermochemistry import HarmonicThermo, IdealGasThermo
-from ase.build import molecule
-
-def get_thermal_correction_adsorbate(T, frequencies):
-    thermo = HarmonicThermo(frequencies)
-    return thermo.get_helmholtz_energy(T, verbose=False)
-
-
-
-def get_thermal_correction_ideal_gas(T, frequencies, symmetrynumber, geometry, spin, name):
-    thermo = IdealGasThermo(frequencies, geometry, atoms=molecule(name), symmetrynumber=symmetrynumber, spin=spin) 
-    H = thermo.get_enthalpy(T, verbose=False)
-    S = thermo.get_entropy(T, 1.0e5, verbose=False)
-
-    free_energy = H-T*S
-    return free_energy
-"""
 
 function main(;nref=0,
               voltages=(-3.0:0.1:3.0)*ufac"V",
               molarities=[0.001,0.01,0.1,1],
               scheme=:μex,
-              xmax=1,
               κ=10.0,
               Plotter=PyPlot,
               new=false,
@@ -106,32 +84,33 @@ function main(;nref=0,
             # A+_aq <-> A+_ads,	                    #1
             ΔG_ads_aplus    = 1.0 * eV + 1.0e+1 * sigma * eV
 
-            kf[1] = 1.0e13 * exp(max(-ΔG_ads_aplus, 0.0) / (k_B * T))
-            kr[1] = 1.0e13 * exp(-max(ΔG_ads_aplus, 0.0) / (k_B * T))
+            kf[1] = 1.0e13 * exp(-max(ΔG_ads_aplus, 0.0) / (k_B * T))
+            kr[1] = 1.0e13 * exp(-max(-ΔG_ads_aplus, 0.0) / (k_B * T))
 
             # A+_ads + e- <-> A_ads,                #2          
-            ΔG_rxn = 10.0 * eV + 2.0e+1 * sigma * eV
+            ΔG_rxn = 1.0 * eV + 1.5e+1 * sigma * eV
 
-            kf[2] = 1.0e13 * exp(max(-ΔG_rxn, 0.0) / (k_B * T))
-            kr[2] = 1.0e13 * exp(-max(ΔG_rxn, 0.0) / (k_B * T))
+            kf[2] = 1.0e13 * exp(-max(ΔG_rxn, 0.0) / (k_B * T))
+            kr[2] = 1.0e13 * exp(-max(-ΔG_rxn, 0.0) / (k_B * T))
 
             # A_ads <-> A_aq                        #3
-            ΔG_ads_a        = 0.5 * eV - 0.5e+1 * sigma * eV
+            ΔG_ads_a        = 0.5 * eV + 0.5e+1 * sigma * eV
 
-            kf[3] = 1.0e13 * exp(max(-ΔG_ads_a, 0.0) / (k_B * T))
-            kr[3] = 1.0e13 * exp(-max(ΔG_ads_a, 0.0) / (k_B * T))
+            kf[3] = 1.0e13 * exp(-max(ΔG_ads_a, 0.0) / (k_B * T))
+            kr[3] = 1.0e13 * exp(-max(-ΔG_ads_a, 0.0) / (k_B * T))
 
             S       = 1.0e-6 / N_A * (1.0e10)^2 * ufac"mol/m^2"
-            θ_free  = (1- u[iaplus_ads] - u[ia_ads])
+            θ_free  = 1 - u[iaplus_ads] - u[ia_ads]
 
             rates = zeros(Tval, 3)
 
-            rates[1] = kf[1] * u[iaplus] * dm^3/mol * θ_free - kr[1] * u[iaplus_ads]
+            rates[1] = kf[1] * u[iaplus] * θ_free - kr[1] * u[iaplus_ads]
             rates[2] = kf[2] * u[iaplus_ads] - kr[2] * u[ia_ads]
-            rates[3] = kf[3] * u[ia_ads] - kr[3] * u[ia] * dm^3/mol * θ_free
+            rates[3] = kf[3] * u[ia_ads] - kr[3] * u[ia] * θ_free
 
-            #println("rate constants: $(ForwardDiff.value.(kf)) and $(ForwardDiff.value.(kr))")
+            println("rate constants: $(ForwardDiff.value.(kf)) and $(ForwardDiff.value.(kr))")
             println("rates: $(ForwardDiff.value.(rates))")
+            println("aplus: $(ForwardDiff.value(u[iaplus]))")
 
             # bulk species
             f[iaplus] += -rates[1] * S
@@ -161,16 +140,20 @@ function main(;nref=0,
     
     celldata.c_bulk[iaplus]         = 0.1 * mol/dm^3
     celldata.c_bulk[ibminus]        = 0.1 * mol/dm^3
-    celldata.c_bulk[ia]             = 0.0 * mol/dm^3
+    celldata.c_bulk[ia]             = 0.1 * mol/dm^3
 
     @assert isapprox(celldata.c_bulk'*celldata.z,0, atol=1.0e-10)
     
     cell=PNPSystem(grid;bcondition=halfcellbc,celldata)
+
+    un = unknowns(cell)
+    @views un[iaplus_ads, :] .= 0.1
+    @views un[ia_ads, :] .= 0.1
     
         
     volts, currs, sols = ivsweep(cell; voltages, ispec=iaplus, kwargs...)
     vis=GridVisualizer(;Plotter, layout=(1,1))
-    scalarplot!(vis[1,1], volts, -currs*ufac"cm^2/mA",color="red",markershape=:utriangle,markersize=7, markevery=10,label="PNP",clear=true,legend=:lt,xlabel="Δϕ/V",ylabel="I/(mA/cm^2)", yscale=:log)
+    scalarplot!(vis[1,1], volts, currs*ufac"cm^2/mA",color="red",markershape=:utriangle,markersize=7, markevery=10,label="PNP",clear=true,legend=:lt,xlabel="Δϕ/V",ylabel="I/(mA/cm^2)")
     #scalarplot!(vis[2,1], sigmas, energies, color="black",clear=true,xlabel="σ/(μC/cm^s)",ylabel="ΔE/eV")
     #scalarplot!(vis[2,1], ϕs, rs, xlimits=(-1.5,-0.6), yscale=:log, xlabel="Δϕ/V", ylabel="c(CO2)/M")
     for curr in currs
