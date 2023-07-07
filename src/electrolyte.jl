@@ -108,7 +108,7 @@ $(TYPEDFIELDS)
     """
     Species weights for norms in solver control.
     """
-    weights::Vector{Float64}=[v...,1.0,0.0]
+    weights::Vector{Float64}=[v...,zeros(na)...,1.0,0.0]
 
 end
 
