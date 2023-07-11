@@ -35,36 +35,78 @@ end
     L=20.0*nm
     X=geomspace(0,L,hmin,hmax)
     molarity=0.1*ufac"M"
-    voltages=collect(-1:0.01:1)*ufac"V"
+    voltages=collect(-1:0.005:1)*ufac"V"
     δ=1.0e-4
     
     grid=simplexgrid(X)
-    κ=[0,0]
-    acelldata=ElectrolyteData(;Γ_we=1, Γ_bulk=2,  scheme=:act,κ)
-    acell=PNPSystem(grid;bcondition,celldata=acelldata)
-    avolts,acaps=dlcapsweep(acell;voltages,molarity,δ)
+    function xtest(κ)
+        acelldata=ElectrolyteData(;Γ_we=1, Γ_bulk=2,  scheme=:act,κ)
+        acell=PNPSystem(grid;bcondition,celldata=acelldata)
+        aresult=dlcapsweep(acell;voltages,molarity,δ)
+        avolts=aresult.voltages
+        acaps=aresult.dlcaps
+        
+        μcelldata=ElectrolyteData(;Γ_we=1, Γ_bulk=2, scheme=:μex,κ)
+        μcell=PNPSystem(grid;bcondition,celldata=μcelldata)
+        μresult=dlcapsweep(μcell;voltages,molarity,δ)
+        μvolts=μresult.voltages
+        μcaps=μresult.dlcaps
+        
+        ccelldata=ElectrolyteData(;Γ_we=1, Γ_bulk=2, scheme=:cent,κ)
+        ccell=PNPSystem(grid;bcondition,celldata=ccelldata)
+        cresult=dlcapsweep(ccell;voltages,molarity,δ)
+        cvolts=cresult.voltages
+        ccaps=cresult.dlcaps
+        
+        
+        function pbbcondition(f,u,bnode,data)
+	    (;Γ_we,Γ_bulk,ϕ_we) = data
+       	    iϕ,ip=1,2 
+	    ## Dirichlet ϕ=ϕ_we at Γ_we
+	    boundary_dirichlet!(f,u,bnode,species=iϕ,region=Γ_we,value=ϕ_we)
+	    boundary_dirichlet!(f,u,bnode,species=iϕ,region=Γ_bulk,value=data.ϕ_bulk)
+	    boundary_dirichlet!(f,u,bnode,species=ip,region=Γ_bulk,value=data.p_bulk)
+        end
+        
+        pcelldata=ElectrolyteData(;Γ_we=1, Γ_bulk=2, scheme=:cent,κ)
+        pcell=PBSystem(grid;bcondition=pbbcondition,celldata=pcelldata)
+        presult=dlcapsweep(pcell;inival=unknowns(pcell),voltages,molarity,δ, iϕ=1)
+        pvolts=presult.voltages
+        pcaps=presult.dlcaps
+        
+        ecell=create_equilibrium_system(grid,EquilibriumData(acelldata))
+        evolts,ecaps=dlcapsweep_equi(ecell,vmax=1.0,molarity=0.1,δV=1.0e-4,nsteps=201)
+        
+        @show norm((acaps-ecaps)./ecaps)
+        @show norm((acaps-μcaps)./acaps)
+        @show norm((acaps-ccaps)./acaps)
+        @show norm((acaps-pcaps)./acaps)
+        
+        # @show dlcap0(acelldata)
+        # @show acaps[findfirst(x->x≈0,avolts)]
+        # @show ecaps[findfirst(x->x≈0,evolts)]
+        # @show ccaps[findfirst(x->x≈0,cvolts)]
+        # @show μcaps[findfirst(x->x≈0,μvolts)]
+        # @show pcaps[findfirst(x->x≈0,pvolts)]
+        
+        @test dlcap0(acelldata) ≈ dlcap0(EquilibriumData(acelldata))
+        
+        @test isapprox(dlcap0(acelldata),acaps[findfirst(x->x≈0,avolts)], rtol=1.0e-2)
+        @test isapprox(dlcap0(acelldata),ecaps[findfirst(x->x≈0,evolts)], rtol=1.0e-2)
+        @test isapprox(dlcap0(acelldata),ccaps[findfirst(x->x≈0,cvolts)], rtol=1.0e-2) 
+        @test isapprox(dlcap0(acelldata),μcaps[findfirst(x->x≈0,μvolts)], rtol=1.0e-2)
+        @test isapprox(dlcap0(acelldata),pcaps[findfirst(x->x≈0,pvolts)], rtol=1.0e-2)
+        
 
-    μcelldata=ElectrolyteData(;Γ_we=1, Γ_bulk=2, scheme=:μex,κ)
-    μcell=PNPSystem(grid;bcondition,celldata=μcelldata)
-    μvolts,μcaps=dlcapsweep(μcell;voltages,molarity,δ)
+        @test isapprox(acaps,ecaps,rtol=1.0e-3)
+        @test isapprox(acaps,μcaps,rtol=1.0e-10)
+        @test isapprox(acaps,ccaps,rtol=1.0e-10)
+        @test isapprox(acaps,pcaps,rtol=1.0e-10)
+    end
+    xtest([0.0,0.0])
+    xtest([10.0,10.0])
     
-    ccelldata=ElectrolyteData(;Γ_we=1, Γ_bulk=2, scheme=:cent,κ)
-    ccell=PNPSystem(grid;bcondition,celldata=ccelldata)
-    cvolts,ccaps=dlcapsweep(ccell;voltages,molarity,δ)
-    
-    ecell=create_equilibrium_system(grid,EquilibriumData(acelldata))
-    evolts,ecaps=dlcapsweep_equi(ecell,vmax=1.0,molarity=0.1,δV=1.0e-4,nsteps=101)
-
-    @show norm((acaps-ecaps)./ecaps)
-    @show norm((acaps-μcaps)./acaps)
-    @show norm((acaps-ccaps)./acaps)
-
-    @test dlcap0(acelldata) ≈ dlcap0(EquilibriumData(acelldata))
-    @test isapprox(acaps,ecaps,rtol=1.0e-3)
-    @test isapprox(acaps,μcaps,rtol=1.0e-10)
-    @test isapprox(acaps,ccaps,rtol=1.0e-10)
-end    
-
+end
 
 function run_notebook_in_current_environment(notebookname)
     # Prevent Pluto from calling into registry update
@@ -95,7 +137,7 @@ end
 
 notebooks=["ORR.jl"]
 
-if VERSION>v"1.8" && !(VERSION>v"1.9.99")
+if VERSION>v"1.8" && !(VERSION>v"1.9.99") && !Sys.isapple()
     ENV["PLUTO_DEVELOP"]=true
     ENV["PLUTO_CI"]=true
     @testset "notebooks" begin
