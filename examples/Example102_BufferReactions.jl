@@ -125,22 +125,27 @@ function main(;nref=0,
     # buffer equations
     ## in base
     ## CO2 + OH- <=> HCO3-
+    kbe1 = 4.44e7 / (mol/dm^3)
     kbf1 = 5.93e3 / (mol/dm^3) / ufac"s"
-    kbr1 = 4.44e7 / (mol/dm^3) / kbf1
+    kbr1 = kbf1 / kbe1
     ## HCO3- + OH- <=> CO3-- + H2O
+    kbe2 = 4.66e3 / (mol/dm^3)
     kbf2 = 1.0e8 / (mol/dm^3) / ufac"s"
-    kbr2 = 4.66e3 / (mol/dm^3) / kbf2
+    kbr2 = kbf2 / kbe2
 
     ## in acid
     ## CO2 + H20 <=> HCO3- + H+
+    kae1 = 4.44e-7 * (mol/dm^3)
     kaf1 = 3.7e-2 / ufac"s"
-    kar1 = 4.44e-7 * (mol/dm^3) / kaf1
+    kar1 = kaf1 / kae1
     ## HCO3- <=> CO3-- + H+ 
-    kaf2 = 59.44e8 / ufac"s"
-    kar2 = 4.66e-5 * (mol/dm^3) / kaf2
+    kae2 = 4.66e-5 / (mol/dm^3)
+    kaf2 = 59.44e3 / (mol/dm^3) / ufac"s"
+    kar2 = kaf2 / kae2
     ## autoprotolyse
+    kwe  = 1.0e-14 * (mol/dm^3)^2
     kwf  = 2.4e-5 * (mol/dm^3) / ufac"s"
-    kwr  = 1.0e-14 * (mol/dm^3)^2 / kwf
+    kwr  = kwf / kwe
 
 
     C_gap = 20 * ufac"μF/cm^2"
@@ -158,7 +163,6 @@ function main(;nref=0,
         (;nc,Γ_we,Γ_bulk,ϕ_we,ip,iϕ,v,v0,T, RT, ε)=data
 
         bulkbcondition(f,u,bnode,data;region=Γ_bulk)
-
 
         if bnode.region==Γ_we
 
@@ -180,18 +184,18 @@ function main(;nref=0,
         rates       = zeros(Tv, 5)
         ## in base
         ## CO2 + OH- <=> HCO3-
-        rates[1]    = kbf1 * u[ico2] / Hcp_CO2 / bar * u[iohminus]  - kbr1 * u[ihco3]  
+        rates[1]    = kbf1 * u[ico2] * u[iohminus]  - kbr1 * u[ihco3]  
         ## HCO3- + OH- <=> CO3-- + H2O
-        rates[2]    = kbf2 * u[ihco3]   * u[iohminus]   - kbr2 * u[ico3]  
+        rates[2]    = kbf2 * u[ihco3] * u[iohminus] - kbr2 * u[ico3]
 
         ## in acid
         ## CO2 + H20 <=> HCO3- + H+
-        rates[3]    = kaf1 * u[ico2] / Hcp_CO2 / bar - kar1 * u[ihco3]   * u[ihplus]  
+        rates[3]    = kaf1 * u[ico2]  - kar1 * u[ihco3] * u[ihplus]  
         ## HCO3- <=> CO3-- + H+ 
-        rates[4]    = kaf2 * u[ihco3]   - kar2 * u[ico3]   * u[ihplus]  
+        rates[4]    = kaf2 * u[ihco3] - kar2 * u[ico3] * u[ihplus]  
 
         ## autoprotolyse
-        rates[5]    = kwf - kwr * u[ihplus]  * u[iohminus]  
+        rates[5]    = kwf - kwr * u[ihplus] * u[iohminus]  
 
         #println("$(ForwardDiff.value.(rates))")
 
@@ -200,7 +204,8 @@ function main(;nref=0,
         f[ihplus]   += rates[3] + rates[4] + rates[5]
         f[iohminus] += -rates[1] -rates[2] + rates[5]
 
-        #println("$(ForwardDiff.value.(f))")
+        #println("$(ForwardDiff.value.(u))")
+        #println("$(node.index): $(ForwardDiff.value.(f))")
         nothing
     end
     
@@ -217,24 +222,28 @@ function main(;nref=0,
 
     (;iϕ::Int,ip::Int)=celldata
     
-    celldata.c_bulk[ikplus]         = 0.1 * mol/dm^3
-    celldata.c_bulk[ihco3]          = (0.1 - 9.53936e-8) * mol/dm^3
-    celldata.c_bulk[ico3]           = 9.53936e-8 * mol/dm^3
+    celldata.c_bulk[ikplus]         = 0.0 * mol/dm^3
+    celldata.c_bulk[ihco3]          = 0.091 * mol/dm^3
+    celldata.c_bulk[ico3]           = 2.68e-5 * mol/dm^3
     celldata.c_bulk[ico2]           = 0.033 * mol/dm^3
     celldata.c_bulk[ico]            = 0.0 * mol/dm^3
     celldata.c_bulk[iohminus]       = 10^(pH - 14) * mol/dm^3
     celldata.c_bulk[ihplus]         = 10^(-pH) * mol/dm^3
 
+    celldata.c_bulk[ikplus]         = -celldata.c_bulk'*celldata.z
+
+    #println("$(celldata.c_bulk'*celldata.z)")
     @assert isapprox(celldata.c_bulk'*celldata.z,0, atol=1.0e-10)
     
     cell    = PNPSystem(grid; bcondition=halfcellbc, reaction=reaction, celldata)
+    #println("$(size(unknowns(cell))): $(ForwardDiff.value.(unknowns(cell)'))")
 
     tsol    = pHvsweep(cell; voltages=voltages, kwargs...) 
     
     vis     = GridVisualizer(;Plotter, layout=(1,1))
 
     idx = Int(length(tsol.t) / 2)
-    scalarplot!(vis[1,1], cell.grid, tsol[ihplus, :, idx], color="red",markershape=:utriangle,markersize=7, markevery=10,label="$(tsol.t[idx])",clear=true,legend=:lt,xlabel="Δϕ/V",ylabel="c(H+)", yscale=:log)
+    scalarplot!(vis[1,1], cell.grid, -log10.(tsol[ihplus, :, idx] / (mol/dm^3)), color="red",markershape=:utriangle,markersize=7, markevery=10,label="$(tsol.t[idx])",clear=true,legend=:lt,xlabel="Δϕ/V",ylabel="-log c(H+)", xscale=:log, yscale=:log)
     return reveal(vis)
 end
 
