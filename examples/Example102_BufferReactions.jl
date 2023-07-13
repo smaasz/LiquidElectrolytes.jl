@@ -88,9 +88,9 @@ function pHvsweep(sys; voltages = (-0.5:0.1:0.5) * ufac"V", solver_kwargs...)
 end
 
 function main(;nref=0,
-              voltages=(-1.5:0.1:-0.6)*ufac"V",
+              voltages=(-1.5:0.1:-0.0)*ufac"V",
               scheme=:μex,
-              κ=10.0,
+              κ=4.0,
               Plotter=PyPlot,
               kwargs...)
 
@@ -108,7 +108,7 @@ function main(;nref=0,
 
     kwargs=merge(defaults, kwargs) 
 
-    hmin    = 1.0e-1*μm*2.0^(-nref)
+    hmin    = 1.0e-6*μm*2.0^(-nref)
     hmax    = 1.0*μm*2.0^(-nref)
     L       = 80.0 * μm
     X       = geomspace(0,L,hmin,hmax)
@@ -164,14 +164,15 @@ function main(;nref=0,
 
         bulkbcondition(f,u,bnode,data;region=Γ_bulk)
 
-        if bnode.region==Γ_we
+        boundary_dirichlet!(f,u,bnode;species=iϕ,region=Γ_we,value=ϕ_we)
 
-            #boundary_dirichlet!(f,u,bnode;species=iϕ,region=Γ_we,value=ϕ_we)
+        if bnode.region==Γ_we
             
             # Robin b.c. for the Poisson equation
-            boundary_robin!(f, u, bnode, iϕ, C_gap / ε, C_gap * (ϕ_we - ϕ_pzc) / ε)
+            #boundary_robin!(f, u, bnode, iϕ, C_gap / ε, C_gap * (ϕ_we - ϕ_pzc) / ε)
+            #println("$(ForwardDiff.value(u[iϕ]))")
 
-            # homogeneous Neumann conditions, no flux
+            #homogeneous Neumann conditions, no flux
             # for ic in 1:nc
             #     f[ic] = 0
             # end
@@ -190,19 +191,17 @@ function main(;nref=0,
 
         ## in acid
         ## CO2 + H20 <=> HCO3- + H+
-        rates[3]    = kaf1 * u[ico2]  - kar1 * u[ihco3] * u[ihplus]  
+        rates[3]    = kaf1 * u[ico2] - kar1 * u[ihco3] * u[ihplus]  
         ## HCO3- <=> CO3-- + H+ 
         rates[4]    = kaf2 * u[ihco3] - kar2 * u[ico3] * u[ihplus]  
 
         ## autoprotolyse
         rates[5]    = kwf - kwr * u[ihplus] * u[iohminus]  
 
-        #println("$(ForwardDiff.value.(rates))")
-
-        f[ihco3]    += rates[1] - rates[2] + rates[3] - rates[4]
-        f[ico3]     += rates[2] + rates[4]
-        f[ihplus]   += rates[3] + rates[4] + rates[5]
-        f[iohminus] += -rates[1] -rates[2] + rates[5]
+        f[ihco3]    -= rates[1] - rates[2] + rates[3] - rates[4]
+        f[ico3]     -= rates[2] + rates[4]
+        f[ihplus]   -= rates[3] + rates[4] + rates[5]
+        f[iohminus] -= -rates[1] -rates[2] + rates[5]
 
         #println("$(ForwardDiff.value.(u))")
         #println("$(node.index): $(ForwardDiff.value.(f))")
@@ -212,7 +211,7 @@ function main(;nref=0,
     celldata=ElectrolyteData(;nc=7,
                              na=0,
                              z=[1,-1,-2,0,0,-1,1],
-                             D=[1.957e-9, 1.185e-9, 0.923e-9, 1.91e-9, 2.23e-9, 5.273e-9, 9.310e-9] * ufac"m^2/s", # from Ringe paper
+                             D=[1.957e-9, 1.185e-9, 0.923e-9, 1.91e-9, 2.23e-9, 5.273e-9, 9.311e-9] * ufac"m^2/s", # from Ringe paper
                              T=T,
                              eneutral=false,
                              κ=fill(κ,7),
@@ -236,14 +235,15 @@ function main(;nref=0,
     @assert isapprox(celldata.c_bulk'*celldata.z,0, atol=1.0e-10)
     
     cell    = PNPSystem(grid; bcondition=halfcellbc, reaction=reaction, celldata)
-    #println("$(size(unknowns(cell))): $(ForwardDiff.value.(unknowns(cell)'))")
 
     tsol    = pHvsweep(cell; voltages=voltages, kwargs...) 
     
     vis     = GridVisualizer(;Plotter, layout=(1,1))
 
-    idx = Int(length(tsol.t) / 2)
-    scalarplot!(vis[1,1], cell.grid, -log10.(tsol[ihplus, :, idx] / (mol/dm^3)), color="red",markershape=:utriangle,markersize=7, markevery=10,label="$(tsol.t[idx])",clear=true,legend=:lt,xlabel="Δϕ/V",ylabel="-log c(H+)", xscale=:log, yscale=:log)
+    idx = round(Int32, length(tsol.t)/ 2) + 10
+    pHvalues = @view tsol[ihplus, begin:end, idx]
+    scalarplot!(vis[1,1], cell.grid, -log10.(pHvalues / (mol/dm^3)), color="red",markershape=:utriangle,markersize=7, markevery=10,label="$(tsol.t[idx])",clear=true,legend=:lt,xlabel="Δϕ/V",ylabel="-log c(H+)", xscale=:log,yscale=:log)
+    #scalarplot!(vis[1,2], cell.grid, [LiquidElectrolytes.charge(convert(Vector{Float64}, s[:, idx]), celldata) for s in eachslice(tsol; dims=2)])
     return reveal(vis)
 end
 
