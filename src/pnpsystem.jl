@@ -182,13 +182,9 @@ Create VoronoiFVM system for generalized Poisson-Nernst-Planck. Input:
 - `bcondition`: boundary condition
 - `kwargs`: Keyword arguments of VoronoiFVM.System
 """
-function PNPSystem(grid; celldata = ElectrolyteData(), bcondition = default_bcondition, kwargs...)
+function PNPSystem(grid; celldata = ElectrolyteData(), bcondition = default_bcondition, reaction = nothing, kwargs...)
 
     function pnpreaction(f, u, node, electrolyte)
-        
-        ## charge density
-        f[electrolyte.iϕ] = -charge(u,electrolyte)
-        f[electrolyte.ip] = 0
         
         if isnothing(reaction)
             for ic = 1:electrolyte.nc
@@ -197,17 +193,22 @@ function PNPSystem(grid; celldata = ElectrolyteData(), bcondition = default_bcon
         else
             reaction(f, u, node, electrolyte)
         end
+
+        ## charge density
+        f[electrolyte.iϕ] = -charge(u, electrolyte)
+        f[electrolyte.ip] = 0
+        nothing
     end
 
     sys = VoronoiFVM.System(grid;
-    data = celldata,
-    flux = pnpflux,
-    reaction = pnpreaction,
-    storage = pnpstorage,
-    bcondition,
-    species = [1:(celldata.nc)..., celldata.iϕ, celldata.ip],
-    kwargs...)
-for ia = (celldata.nc + 1):(celldata.nc + celldata.na)
+                            data = celldata,
+                            flux = pnpflux,
+                            reaction = pnpreaction,
+                            storage = pnpstorage,
+                            bcondition,
+                            species = [1:(celldata.nc)..., celldata.iϕ, celldata.ip],
+                            kwargs...)
+    for ia = (celldata.nc + 1):(celldata.nc + celldata.na)
         enable_boundary_species!(sys, ia, [celldata.Γ_we])
     end
     sys
