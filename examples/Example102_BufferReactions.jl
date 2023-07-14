@@ -169,7 +169,7 @@ function main(;nref=0,
         if bnode.region==Γ_we
             
             # Robin b.c. for the Poisson equation
-            #boundary_robin!(f, u, bnode, iϕ, C_gap / ε, C_gap * (ϕ_we - ϕ_pzc) / ε)
+            #boundary_robin!(f, u, bnode, iϕ, C_gap, C_gap * (ϕ_we - ϕ_pzc))
             #println("$(ForwardDiff.value(u[iϕ]))")
 
             #homogeneous Neumann conditions, no flux
