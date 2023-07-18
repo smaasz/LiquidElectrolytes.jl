@@ -34,19 +34,63 @@ if initialized
 	using ExtendableGrids,GridVisualize
 	using LiquidElectrolytes
 	using VoronoiFVM
-	using PyPlot,Colors 
 	using InteractiveUtils
 	using ForwardDiff
 	using PlutoUI
+	using PlutoVista
 end
 
 # ╔═╡ 7ac7bb02-886f-4b5e-90ef-1a5427210adc
-@unitfactors mol dm;
+@unitfactors mol dm eV μA μF cm μm;
+
+# ╔═╡ e8de40fe-472e-437f-92c8-5f75f5d58601
+begin
+	@phconstants c_0 N_A e k_B
+	F = N_A * e
+end;
+
+# ╔═╡ 28309673-e34e-4bf3-9c53-d04a283364ef
+md"""
+## System Parameters
+"""
+
+# ╔═╡ 21220239-899e-41e3-8454-aba2a71c107d
+pH = 6.8;
+
+# ╔═╡ 8e4df2a2-d021-4cbe-8671-7326f1a9644f
+T = 273.15 + 25 * ufac"K";
+
+# ╔═╡ 80e17415-f04e-42ee-94e7-22336b81101a
+# Diffusion constants
+D = [1.957e-9, 1.185e-9, 0.923e-9, 1.91e-9, 2.23e-9, 5.273e-9, 9.310e-9] * ufac"m^2/s"; # from Ringe paper
+
+# ╔═╡ a457d4b4-fabd-4d28-a10d-d4aaf8d54be5
+begin
+	C_gap = 20 * μF/cm^2
+    ϕ_pzc = 0.16 * ufac"V"
+end;
 
 # ╔═╡ e969bc7f-f0f3-4f70-a522-133ee56cce5e
 md"""
-## Buffer reaction rate constants
+## Buffer reactions
+
+Mean-field approach using the law of mass action
 """
+
+# ╔═╡ 8378931a-18cc-4d2f-a289-7d0f681cc297
+begin # bulk species
+	ikplus      = 1
+    ihco3       = 2
+    ico3        = 3
+    ico2        = 4
+    ico         = 5
+    iohminus    = 6
+    ihplus      = 7
+	nc 			= 7
+end;
+
+# ╔═╡ 15cdb66d-411f-4499-a389-163127c22e6c
+species = ["K+", "HCO3-", "CO3--", "CO2", "CO", "OH-", "H+"];
 
 # ╔═╡ 3161211b-3188-4e4f-a12e-5a16cfd5e932
 md"""
@@ -105,21 +149,62 @@ begin
     kwr  = kwf / kwe
 end;
 
-# ╔═╡ 0ccbfaa2-ea0a-4e79-8826-62f7116986e5
-species = ["K+", "HCO3-", "CO3--", "CO2", "CO", "OH-", "H+"]
+# ╔═╡ 12c99cb0-8a3a-49f5-b49b-92e8e6d63507
+function reaction(f, u::VoronoiFVM.NodeUnknowns{Tv, Tc, Tp, Ti}, node, data) where {Tv, Tc, Tp, Ti}  
+	# buffer reactions
+	rates       = zeros(Tv, 5)
+	## in base
+	## CO2 + OH- <=> HCO3-
+	rates[1]    = kbf1 * u[ico2] * u[iohminus]  - kbr1 * u[ihco3]  
+	## HCO3- + OH- <=> CO3-- + H2O
+	rates[2]    = kbf2 * u[ihco3] * u[iohminus] - kbr2 * u[ico3]
+
+	## in acid
+	## CO2 + H20 <=> HCO3- + H+
+	rates[3]    = kaf1 * u[ico2] - kar1 * u[ihco3] * u[ihplus]  
+	## HCO3- <=> CO3-- + H+ 
+	rates[4]    = kaf2 * u[ihco3] - kar2 * u[ico3] * u[ihplus]  
+
+	## autoprotolyse
+	rates[5]    = kwf - kwr * u[ihplus] * u[iohminus]  
+
+	f[ihco3]    -= rates[1] - rates[2] + rates[3] - rates[4]
+	f[ico3]     -= rates[2] + rates[4]
+	f[ihplus]   -= rates[3] + rates[4] + rates[5]
+	f[iohminus] -= -rates[1] -rates[2] + rates[5]
+
+	nothing
+end;
+
+# ╔═╡ a7b7b5f9-148c-4361-95fb-00930f74c76b
+md"""
+## Boundary Conditions
+"""
+
+# ╔═╡ d45fa649-12b0-47cf-ae9c-a2baed705d8b
+function halfcellbc(f,u, bnode,data)
+	(; Γ_we, Γ_bulk, ϕ_we, iϕ,) = data
+
+	bulkbcondition(f, u, bnode, data; region = Γ_bulk)
+	#boundary_dirichlet!(f, u, bnode; species = iϕ, region = Γ_we, value = ϕ_we)
+
+	# Robin b.c. for the Poisson equation
+	boundary_robin!(f, u, bnode, iϕ, Γ_we , C_gap, C_gap * (ϕ_we - ϕ_pzc))
+	
+	nothing
+end;
+
+# ╔═╡ 2fbe5a81-063a-4e84-8799-c5acde5000cf
+md"""
+## Simulation of the $CO_2$ reduction
+"""
 
 # ╔═╡ 19aee117-59b8-405f-8f96-adf2c183982f
-function main(;nref 	= 0,
-              voltages 	= (-1.5:0.1:-0.0)*ufac"V",
-              scheme 	= :μex,
-              κ 		= 4.0,
-              kwargs...)
-
-    @local_phconstants N_A e R ε_0 k_B c_0
-    F = N_A*e
-    @local_unitfactors cm μF s mA A nm bar eV μA μm
-
-
+function simulate_buffer_reactions(;nref 	= 0,
+              						voltages= (-1.5:0.1:-0.0) * ufac"V",
+              						scheme 	= :μex,
+              						κ 		= 4.0,
+              						kwargs...)
     
     defaults = (; 	max_round 	= 3,
               		tol_round 	= 1.0e-9,
@@ -129,86 +214,22 @@ function main(;nref 	= 0,
 
     kwargs = merge(defaults, kwargs) 
 
-    hmin    = 1.0e-6*μm*2.0^(-nref)
-    hmax    = 1.0*μm*2.0^(-nref)
+    hmin    = 1.0e-6 * μm * 2.0^(-nref)
+    hmax    = 1.0 * μm * 2.0^(-nref)
     L       = 80.0 * μm
-    X       = geomspace(0,L,hmin,hmax)
+    X       = geomspace(0, L, hmin, hmax)
     grid    = simplexgrid(X)
-
-    # environment parameters
-    T   = 273.15 + 25 * ufac"K"
-    pH  = 6.8
-
-    C_gap = 20 * ufac"μF/cm^2"
-    ϕ_pzc = 0.16 * ufac"V"
-
-	#indicies of the bulk species
-    ikplus      = 1
-    ihco3       = 2
-    ico3        = 3
-    ico2        = 4
-    ico         = 5
-    iohminus    = 6
-    ihplus      = 7
-
-    function halfcellbc(f,u, bnode,data)
-        (; nc, Γ_we, Γ_bulk, ϕ_we, ip, iϕ, v, v0, T, RT, ε) = data
-
-        bulkbcondition(f, u, bnode, data; region = Γ_bulk)
-        boundary_dirichlet!(f, u, bnode; species = iϕ, region = Γ_we, value = ϕ_we)
-
-        if bnode.region == Γ_we
-            
-            # Robin b.c. for the Poisson equation
-            #boundary_robin!(f, u, bnode, iϕ, C_gap / ε, C_gap * (ϕ_we - ϕ_pzc) / ε)
-            #println("$(ForwardDiff.value(u[iϕ]))")
-
-            #homogeneous Neumann conditions, no flux
-            # for ic in 1:nc
-            #     f[ic] = 0
-            # end
-        end
-        nothing
-    end
-
-    function reaction(f, u::VoronoiFVM.NodeUnknowns{Tv, Tc, Tp, Ti}, node, data) where {Tv, Tc, Tp, Ti}  
-        # buffer reactions
-        rates       = zeros(Tv, 5)
-        ## in base
-        ## CO2 + OH- <=> HCO3-
-        rates[1]    = kbf1 * u[ico2] * u[iohminus]  - kbr1 * u[ihco3]  
-        ## HCO3- + OH- <=> CO3-- + H2O
-        rates[2]    = kbf2 * u[ihco3] * u[iohminus] - kbr2 * u[ico3]
-
-        ## in acid
-        ## CO2 + H20 <=> HCO3- + H+
-        rates[3]    = kaf1 * u[ico2] - kar1 * u[ihco3] * u[ihplus]  
-        ## HCO3- <=> CO3-- + H+ 
-        rates[4]    = kaf2 * u[ihco3] - kar2 * u[ico3] * u[ihplus]  
-
-        ## autoprotolyse
-        rates[5]    = kwf - kwr * u[ihplus] * u[iohminus]  
-
-        f[ihco3]    -= rates[1] - rates[2] + rates[3] - rates[4]
-        f[ico3]     -= rates[2] + rates[4]
-        f[ihplus]   -= rates[3] + rates[4] + rates[5]
-        f[iohminus] -= -rates[1] -rates[2] + rates[5]
-
-        nothing
-    end
-    
+  
 	celldata = ElectrolyteData(; nc 	= 7,
                              	 na 	= 0,
                              	 z 		= [1,-1,-2,0,0,-1,1],
-                             	 D 		= [1.957e-9, 1.185e-9, 0.923e-9, 1.91e-9, 2.23e-9, 5.273e-9, 9.311e-9] * ufac"m^2/s", # from Ringe paper
+                             	 D 		= D,
                              	 T 		= T,
                              	 eneutral = false,
                               	 κ 		= fill(κ,7),
                               	 Γ_we 	= 1,
                              	 Γ_bulk = 2,
                              	 scheme)
-
-    (; iϕ::Int, ip::Int) = celldata
     
     celldata.c_bulk[ikplus]         = 0.0 * mol/dm^3
     celldata.c_bulk[ihco3]          = 0.091 * mol/dm^3
@@ -218,21 +239,29 @@ function main(;nref 	= 0,
     celldata.c_bulk[iohminus]       = 10^(pH - 14) * mol/dm^3
     celldata.c_bulk[ihplus]         = 10^(-pH) * mol/dm^3
 
-    celldata.c_bulk[ikplus]         = -celldata.c_bulk'*celldata.z
+    celldata.c_bulk[ikplus]         = -celldata.c_bulk' * celldata.z
 
-    @assert isapprox(celldata.c_bulk'*celldata.z,0, atol=1.0e-10)
+    @assert isapprox(celldata.c_bulk' * celldata.z,0, atol=1.0e-10)
     
     cell    = PNPSystem(grid; bcondition=halfcellbc, reaction=reaction, celldata)
     result  = ivsweep(cell; voltages=voltages, store_solutions=true, kwargs...)
 	cell, result
-end
+end;
 
 # ╔═╡ c2e87bd0-e3b5-4d62-8c54-8bf754d5bada
-(cell, result) = main(; voltages=(-1.5:0.1:0.0))
+(cell, result) = simulate_buffer_reactions(; voltages=(-1.5:0.1:0.0));
+
+# ╔═╡ e129c6b4-3e6a-4fbf-b6cc-5e87335142a4
+md"""
+## Visualization
+"""
+
+# ╔═╡ f73f98b6-2e0c-45a6-ab3c-611fa45c2d13
+(~, default_index) = findmin(abs, result.voltages .+ 0.9 * ufac"V");
 
 # ╔═╡ 9c609ace-f84d-45cb-8c65-6e29b548206d
 md"""
-$(@bind ϕ_we_index_slider PlutoUI.Slider(1:5:length(result.voltages)))
+$(@bind ϕ_we_index_slider PlutoUI.Slider(1:5:length(result.voltages), default=default_index))
 """
 
 # ╔═╡ 287c0ac5-5f15-4f0d-9b9e-51ce873766e7
@@ -241,25 +270,31 @@ Potential at the working electrode
 $(result.voltages[ϕ_we_index_slider])
 """
 
-# ╔═╡ f3f92074-f7c4-4f2e-9ca6-698089b88b63
+# ╔═╡ 9636ac24-d78c-4f2b-b50b-eaa8313bca2a
 md"""
-Plot only the pH-value: $(@bind useonly_pH PlutoUI.CheckBox(default=true))
+Plot only the pH-value: $(@bind useonly_pH PlutoUI.CheckBox(default=false))
+"""
+
+# ╔═╡ 52051ed4-342e-48e2-a759-ee6c73378f3a
+md"""
+Compare with __Supplementary Figure 20__ in *Double layer charging driven carbon dioxide
+adsorption limits the rate of electrochemical
+carbon dioxide reduction on Gold* by __Ringe et al.__ in *Nature Communications*.
 """
 
 # ╔═╡ d2ab1988-f0ca-4c6b-b14a-71341e21640c
 begin
-	vis = GridVisualizer(; 	Plotter=PyPlot, 
-						layout = (1,1), 				
-						clear=true,
-						legend=:lt,
-						limits=(-14, 2),
-						xlabel="Distance from electrode [μm]",
-						ylabel="log c(a_i)", 
-						xscale=:log)
-	
-	(; nc) = electrolytedata(cell)
+	vis = GridVisualizer(; 	Plotter = PlutoVista, 
+							layout 	= (1,1), 				
+							clear 	= true,
+							legend 	= :lt,
+							limits 	= (-14, 2),
+							xlabel 	= "Distance from electrode [μm]",
+							ylabel 	= "log c(a_i)", 
+							xscale 	= :log)
 
-	colors = ["red", "blue", "green", "yellow", "orange", "brown", "pink"]
+	# species = ["K+", "HCO3-", "CO3--", "CO2", "CO", "OH-", "H+"]
+	colors = ["orange", "brown", "violet", "red", "blue", "green", "gray"]
 
 	if useonly_pH
 		ci = result.solutions[ϕ_we_index_slider][7, :]
@@ -268,9 +303,6 @@ begin
 				cell.grid, 
 				log10.( ci/ (mol/dm^3)), 
 				color=colors[7],
-				#markershape=:utriangle,
-				#markersize=7, 
-				#markevery=100,
 				label=species[7],
 				clear=false,)
 	else
@@ -282,9 +314,6 @@ begin
 					cell.grid, 
 					log10.( ci/ (mol/dm^3)), 
 					color=colors[ia],
-					#markershape=:utriangle,
-					#markersize=7, 
-					#markevery=100,
 					label=species[ia],
 					clear=false,)
 		end
@@ -293,10 +322,12 @@ begin
 	reveal(vis)
 end
 
+# ╔═╡ 4b4fc76c-c54d-45f0-a379-2e2286d609df
+TableOfContents(title="📚 Table of Contents", indent=true, depth=4, aside=true)
+
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
-Colors = "5ae59095-9a9b-59fe-a467-6f913c188581"
 ExtendableGrids = "cfc395e8-590f-11e8-1f13-43a2532b2fa8"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 GridVisualize = "5eed8a63-0fb0-45eb-886d-8d5a387d12b8"
@@ -305,19 +336,18 @@ LessUnitful = "f29f6376-6e90-4d80-80c9-fb8ec61203d5"
 LiquidElectrolytes = "5a7dfd8c-b3af-4c8d-a082-d3a774d75e72"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
-PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
+PlutoVista = "646e1f28-b900-46d7-9d87-d554eb38a413"
 Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 VoronoiFVM = "82b139dc-5afc-11e9-35da-9b9bdfd336f3"
 
 [compat]
-Colors = "~0.12.10"
 ExtendableGrids = "~0.9.17"
 ForwardDiff = "~0.10.35"
 GridVisualize = "~1.1.3"
 LessUnitful = "~0.6.1"
 LiquidElectrolytes = "~0.0.21"
 PlutoUI = "~0.7.51"
-PyPlot = "~2.11.1"
+PlutoVista = "~0.8.24"
 Revise = "~3.5.3"
 VoronoiFVM = "~1.9.1"
 """
@@ -328,7 +358,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.8.5"
 manifest_format = "2.0"
-project_hash = "0534659972d8a077fd20ca08500cb2d130f68173"
+project_hash = "6db51e5258d8bbae74ce944085e81b7fa3c76846"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "e58c18d2312749847a74f5be80bb0fa53da102bd"
@@ -402,6 +432,11 @@ uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 git-tree-sha1 = "fe4f8c5ee7f76f2198d5c2a06d3961c249cce7bd"
 uuid = "e2ed5e7c-b2de-5872-ae92-c73ca462fb04"
 version = "0.1.4"
+
+[[deps.BitFlags]]
+git-tree-sha1 = "43b1a4a8f797c1cddadf60499a8a077d4af2cd2d"
+uuid = "d1d4a3ce-64b1-5f1a-9ba4-7e7e69966f35"
+version = "0.1.7"
 
 [[deps.BitTwiddlingConvenienceFunctions]]
 deps = ["Static"]
@@ -507,11 +542,17 @@ git-tree-sha1 = "02d2316b7ffceff992f3096ae48c7829a8aa0638"
 uuid = "b152e2b5-7a66-4b01-a709-34e65c35f657"
 version = "0.1.3"
 
-[[deps.Conda]]
-deps = ["Downloads", "JSON", "VersionParsing"]
-git-tree-sha1 = "915ebe6f0e7302693bdd8eac985797dba1d25662"
-uuid = "8f4d0f93-b110-5947-807f-2305c1781a2d"
-version = "1.9.0"
+[[deps.ConcurrentUtilities]]
+deps = ["Serialization", "Sockets"]
+git-tree-sha1 = "5372dbbf8f0bdb8c700db5367132925c0771ef7e"
+uuid = "f0e56b4a-5159-44fe-b623-3e5288b988bb"
+version = "2.2.1"
+
+[[deps.Configurations]]
+deps = ["ExproniconLite", "OrderedCollections", "TOML"]
+git-tree-sha1 = "62a7c76dbad02fdfdaa53608104edf760938c4ca"
+uuid = "5218b696-f38b-4ac9-8b61-a12ec717816d"
+version = "0.17.4"
 
 [[deps.ConstructionBase]]
 deps = ["LinearAlgebra"]
@@ -625,10 +666,22 @@ git-tree-sha1 = "bdb1942cd4c45e3c678fd11569d5cccd80976237"
 uuid = "4e289a0a-7415-4d19-859d-a7e5c4648b56"
 version = "1.0.4"
 
+[[deps.ExceptionUnwrapping]]
+deps = ["Test"]
+git-tree-sha1 = "e90caa41f5a86296e014e148ee061bd6c3edec96"
+uuid = "460bff9d-24e4-43bc-9d9f-a8973cb893f4"
+version = "0.1.9"
+
 [[deps.ExprTools]]
 git-tree-sha1 = "c1d06d129da9f55715c6c212866f5b1bddc5fa00"
 uuid = "e2ba6199-217a-4e67-a87a-7c52f15ade04"
 version = "0.1.9"
+
+[[deps.ExproniconLite]]
+deps = ["Pkg", "TOML"]
+git-tree-sha1 = "c2eb763acf6e13e75595e0737a07a0bec0ce2147"
+uuid = "55351af7-c7e9-48d6-89ff-24e801d99491"
+version = "0.7.11"
 
 [[deps.ExtendableGrids]]
 deps = ["AbstractTrees", "Dates", "DocStringExtensions", "ElasticArrays", "InteractiveUtils", "LinearAlgebra", "Printf", "Random", "SparseArrays", "StaticArrays", "Test", "WriteVTK"]
@@ -707,6 +760,12 @@ version = "0.1.3"
 deps = ["Random"]
 uuid = "9fa8497b-333b-5362-9e8d-4d0656e87820"
 
+[[deps.FuzzyCompletions]]
+deps = ["REPL"]
+git-tree-sha1 = "e16dd964b4dfaebcded16b2af32f05e235b354be"
+uuid = "fb4132e2-a121-4a70-b8a1-d5b831dcdcc2"
+version = "0.5.1"
+
 [[deps.GPUArraysCore]]
 deps = ["Adapt"]
 git-tree-sha1 = "2d6ca471a6c7b536127afccfa7564b5b39227fe0"
@@ -754,6 +813,12 @@ deps = ["Markdown", "Random"]
 git-tree-sha1 = "9e1a5e9f3b81ad6a5c613d181664a0efc6fe6dd7"
 uuid = "d5909c97-4eac-4ecc-a3dc-fdd0858a4120"
 version = "0.4.0"
+
+[[deps.HTTP]]
+deps = ["Base64", "CodecZlib", "ConcurrentUtilities", "Dates", "ExceptionUnwrapping", "Logging", "LoggingExtras", "MbedTLS", "NetworkOptions", "OpenSSL", "Random", "SimpleBufferStream", "Sockets", "URIs", "UUIDs"]
+git-tree-sha1 = "cb56ccdd481c0dd7f975ad2b3b62d9eda088f7e2"
+uuid = "cd3eb016-35fb-5094-929b-558a96fad6f3"
+version = "1.9.14"
 
 [[deps.HostCPUFeatures]]
 deps = ["BitTwiddlingConvenienceFunctions", "IfElse", "Libdl", "Static"]
@@ -901,6 +966,11 @@ git-tree-sha1 = "88b8f66b604da079a627b6fb2860d3704a6729a1"
 uuid = "10f19ff3-798f-405d-979b-55457f8fc047"
 version = "0.1.14"
 
+[[deps.LazilyInitializedFields]]
+git-tree-sha1 = "410fe4739a4b092f2ffe36fcb0dcc3ab12648ce1"
+uuid = "0e77f7df-68c5-4e49-93ce-4cd80f5598bf"
+version = "1.2.1"
+
 [[deps.Lazy]]
 deps = ["MacroTools"]
 git-tree-sha1 = "1370f8202dac30758f3c345f9909b97f53d87d3f"
@@ -978,6 +1048,12 @@ version = "0.3.24"
 [[deps.Logging]]
 uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
+[[deps.LoggingExtras]]
+deps = ["Dates", "Logging"]
+git-tree-sha1 = "cedb76b37bc5a6c702ade66be44f831fa23c681e"
+uuid = "e6f89c97-d47a-5376-807f-9c37f3926c36"
+version = "1.0.0"
+
 [[deps.LoopVectorization]]
 deps = ["ArrayInterface", "ArrayInterfaceCore", "CPUSummary", "ChainRulesCore", "CloseOpenIntervals", "DocStringExtensions", "ForwardDiff", "HostCPUFeatures", "IfElse", "LayoutPointers", "LinearAlgebra", "OffsetArrays", "PolyesterWeave", "PrecompileTools", "SIMDTypes", "SLEEFPirates", "SpecialFunctions", "Static", "StaticArrayInterface", "ThreadingUtilities", "UnPack", "VectorizationBase"]
 git-tree-sha1 = "e4eed22d70ac91d7a4bf9e0f6902383061d17105"
@@ -1010,6 +1086,12 @@ version = "0.1.8"
 deps = ["Base64"]
 uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
 
+[[deps.MbedTLS]]
+deps = ["Dates", "MbedTLS_jll", "MozillaCACerts_jll", "Random", "Sockets"]
+git-tree-sha1 = "03a9b9718f5682ecb107ac9f7308991db4ce395b"
+uuid = "739be429-bea8-5141-9913-cc70e7f3736d"
+version = "1.1.7"
+
 [[deps.MbedTLS_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
@@ -1033,6 +1115,12 @@ uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 [[deps.MozillaCACerts_jll]]
 uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
 version = "2022.2.1"
+
+[[deps.MsgPack]]
+deps = ["Serialization"]
+git-tree-sha1 = "fc8c15ca848b902015bd4a745d350f02cf791c2a"
+uuid = "99f44e22-a591-53d1-9472-aa23ef4bd671"
+version = "1.2.0"
 
 [[deps.MultivariatePolynomials]]
 deps = ["ChainRulesCore", "DataStructures", "LinearAlgebra", "MutableArithmetics"]
@@ -1089,6 +1177,18 @@ deps = ["Artifacts", "Libdl"]
 uuid = "05823500-19ac-5b8b-9628-191a04bc5112"
 version = "0.8.1+0"
 
+[[deps.OpenSSL]]
+deps = ["BitFlags", "Dates", "MozillaCACerts_jll", "OpenSSL_jll", "Sockets"]
+git-tree-sha1 = "51901a49222b09e3743c65b8847687ae5fc78eb2"
+uuid = "4d8831e6-92b7-49fb-bdf8-b643e874388c"
+version = "1.4.1"
+
+[[deps.OpenSSL_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl"]
+git-tree-sha1 = "cae3153c7f6cf3f069a853883fd1919a6e5bab5b"
+uuid = "458c3c95-2e84-50aa-8efc-19380b2a3a95"
+version = "3.0.9+0"
+
 [[deps.OpenSpecFun_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "13652491f6856acfd2db29360e1bbcd4565d04f1"
@@ -1129,11 +1229,23 @@ deps = ["Artifacts", "Dates", "Downloads", "LibGit2", "Libdl", "Logging", "Markd
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 version = "1.8.0"
 
+[[deps.Pluto]]
+deps = ["Base64", "Configurations", "Dates", "Distributed", "FileWatching", "FuzzyCompletions", "HTTP", "HypertextLiteral", "InteractiveUtils", "Logging", "LoggingExtras", "MIMEs", "Markdown", "MsgPack", "Pkg", "PrecompileSignatures", "PrecompileTools", "REPL", "RegistryInstances", "RelocatableFolders", "Sockets", "TOML", "Tables", "URIs", "UUIDs"]
+git-tree-sha1 = "06fec2244568a4641e3352d20d0a0a608df6fa92"
+uuid = "c3e4b0f8-55cb-11ea-2926-15256bba5781"
+version = "0.19.27"
+
 [[deps.PlutoUI]]
 deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "FixedPointNumbers", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "MIMEs", "Markdown", "Random", "Reexport", "URIs", "UUIDs"]
 git-tree-sha1 = "b478a748be27bd2f2c73a7690da219d0844db305"
 uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 version = "0.7.51"
+
+[[deps.PlutoVista]]
+deps = ["ColorSchemes", "Colors", "DocStringExtensions", "GridVisualizeTools", "HypertextLiteral", "Pluto", "UUIDs"]
+git-tree-sha1 = "30675d4a579f50e60e14a72e36cc453610af7b76"
+uuid = "646e1f28-b900-46d7-9d87-d554eb38a413"
+version = "0.8.24"
 
 [[deps.Polyester]]
 deps = ["ArrayInterface", "BitTwiddlingConvenienceFunctions", "CPUSummary", "IfElse", "ManualMemory", "PolyesterWeave", "Requires", "Static", "StaticArrayInterface", "StrideArraysCore", "ThreadingUtilities"]
@@ -1152,6 +1264,11 @@ deps = ["Adapt", "ArrayInterface", "ForwardDiff", "Requires"]
 git-tree-sha1 = "f739b1b3cc7b9949af3b35089931f2b58c289163"
 uuid = "d236fae5-4411-538c-8e31-a6e3d9e00b46"
 version = "0.4.12"
+
+[[deps.PrecompileSignatures]]
+git-tree-sha1 = "18ef344185f25ee9d51d80e179f8dad33dc48eb1"
+uuid = "91cefc8d-f054-46dc-8f8c-26e11d7c5411"
+version = "3.0.3"
 
 [[deps.PrecompileTools]]
 deps = ["Preferences"]
@@ -1180,18 +1297,6 @@ deps = ["Logging", "SHA", "UUIDs"]
 git-tree-sha1 = "80d919dee55b9c50e8d9e2da5eeafff3fe58b539"
 uuid = "33c8b6b6-d38a-422a-b730-caa89a2f386c"
 version = "0.1.4"
-
-[[deps.PyCall]]
-deps = ["Conda", "Dates", "Libdl", "LinearAlgebra", "MacroTools", "Serialization", "VersionParsing"]
-git-tree-sha1 = "43d304ac6f0354755f1d60730ece8c499980f7ba"
-uuid = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
-version = "1.96.1"
-
-[[deps.PyPlot]]
-deps = ["Colors", "LaTeXStrings", "PyCall", "Sockets", "Test", "VersionParsing"]
-git-tree-sha1 = "92e7ca803b579b8b817f004e74b205a706d9a974"
-uuid = "d330b81b-6aea-500a-939a-2ce795aea3ee"
-version = "2.11.1"
 
 [[deps.QuadGK]]
 deps = ["DataStructures", "LinearAlgebra"]
@@ -1235,6 +1340,18 @@ version = "0.2.18"
 git-tree-sha1 = "45e428421666073eab6f2da5c9d310d99bb12f9b"
 uuid = "189a3867-3050-52da-a836-e630ba90ab69"
 version = "1.2.2"
+
+[[deps.RegistryInstances]]
+deps = ["LazilyInitializedFields", "Pkg", "TOML", "Tar"]
+git-tree-sha1 = "ffd19052caf598b8653b99404058fce14828be51"
+uuid = "2792f1a3-b283-48e8-9a74-f99dce5104f3"
+version = "0.1.0"
+
+[[deps.RelocatableFolders]]
+deps = ["SHA", "Scratch"]
+git-tree-sha1 = "90bc7a7c96410424509e4263e277e43250c05691"
+uuid = "05181044-ff0b-4ac5-8273-598c1e38db00"
+version = "1.0.0"
 
 [[deps.Requires]]
 deps = ["UUIDs"]
@@ -1299,6 +1416,12 @@ git-tree-sha1 = "b1fe33c9984c6789b58419e62e7a2b92f9aa813e"
 uuid = "c0aeaf25-5076-4817-a8d5-81caf7dfa961"
 version = "0.3.3"
 
+[[deps.Scratch]]
+deps = ["Dates"]
+git-tree-sha1 = "30449ee12237627992a99d5e30ae63e4d78cd24a"
+uuid = "6c6a2e73-6563-6170-7368-637461726353"
+version = "1.2.0"
+
 [[deps.Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 
@@ -1311,6 +1434,11 @@ version = "1.1.1"
 [[deps.SharedArrays]]
 deps = ["Distributed", "Mmap", "Random", "Serialization"]
 uuid = "1a1011a3-84de-559e-8e89-a11a2f7dc383"
+
+[[deps.SimpleBufferStream]]
+git-tree-sha1 = "874e8867b33a00e784c8a7e4b60afe9e037b74e1"
+uuid = "777ac1f9-54b0-4bf8-805c-2214025038e7"
+version = "1.1.0"
 
 [[deps.SimpleTraits]]
 deps = ["InteractiveUtils", "MacroTools"]
@@ -1552,11 +1680,6 @@ git-tree-sha1 = "b182207d4af54ac64cbc71797765068fdeff475d"
 uuid = "3d5dd08c-fd9d-11e8-17fa-ed2836048c2f"
 version = "0.21.64"
 
-[[deps.VersionParsing]]
-git-tree-sha1 = "58d6e80b4ee071f5efd07fda82cb9fbe17200868"
-uuid = "81def892-9a0e-5fdd-b105-ffc91e053289"
-version = "1.3.0"
-
 [[deps.VertexSafeGraphs]]
 deps = ["Graphs"]
 git-tree-sha1 = "8351f8d73d7e880bfc042a8b6922684ebeafb35c"
@@ -1606,19 +1729,34 @@ version = "17.4.0+0"
 # ╠═72780458-2175-11ee-14d0-c75cccf64639
 # ╠═3b5a64e6-24cd-423e-aad8-8f400b338867
 # ╠═7ac7bb02-886f-4b5e-90ef-1a5427210adc
+# ╠═e8de40fe-472e-437f-92c8-5f75f5d58601
+# ╟─28309673-e34e-4bf3-9c53-d04a283364ef
+# ╠═21220239-899e-41e3-8454-aba2a71c107d
+# ╠═8e4df2a2-d021-4cbe-8671-7326f1a9644f
+# ╠═80e17415-f04e-42ee-94e7-22336b81101a
+# ╠═a457d4b4-fabd-4d28-a10d-d4aaf8d54be5
 # ╟─e969bc7f-f0f3-4f70-a522-133ee56cce5e
+# ╠═8378931a-18cc-4d2f-a289-7d0f681cc297
+# ╠═15cdb66d-411f-4499-a389-163127c22e6c
 # ╟─3161211b-3188-4e4f-a12e-5a16cfd5e932
 # ╠═b6df427a-7063-4c87-899c-3597c0951f30
 # ╟─18e13140-2693-4a2b-b8e2-24ae437414cd
 # ╠═9447c999-fdf9-4092-b256-e303e105f60e
 # ╟─c1892a61-dd26-4173-8675-8136c8360469
 # ╠═7bcfd007-6f84-4b17-8032-eb5b0b81c8c3
-# ╠═0ccbfaa2-ea0a-4e79-8826-62f7116986e5
+# ╠═12c99cb0-8a3a-49f5-b49b-92e8e6d63507
+# ╟─a7b7b5f9-148c-4361-95fb-00930f74c76b
+# ╠═d45fa649-12b0-47cf-ae9c-a2baed705d8b
+# ╟─2fbe5a81-063a-4e84-8799-c5acde5000cf
 # ╠═19aee117-59b8-405f-8f96-adf2c183982f
 # ╠═c2e87bd0-e3b5-4d62-8c54-8bf754d5bada
+# ╟─e129c6b4-3e6a-4fbf-b6cc-5e87335142a4
+# ╟─f73f98b6-2e0c-45a6-ab3c-611fa45c2d13
 # ╟─287c0ac5-5f15-4f0d-9b9e-51ce873766e7
 # ╟─9c609ace-f84d-45cb-8c65-6e29b548206d
+# ╟─9636ac24-d78c-4f2b-b50b-eaa8313bca2a
+# ╟─52051ed4-342e-48e2-a759-ee6c73378f3a
 # ╠═d2ab1988-f0ca-4c6b-b14a-71341e21640c
-# ╟─f3f92074-f7c4-4f2e-9ca6-698089b88b63
+# ╟─4b4fc76c-c54d-45f0-a379-2e2286d609df
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
