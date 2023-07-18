@@ -133,6 +133,7 @@ function pnpflux(f, u, edge, electrolyte)
     @views c0k, bar_ck = c0_barc(u[:, 1], electrolyte)
     @views c0l, bar_cl = c0_barc(u[:, 2], electrolyte)
 
+    dϕ = ϕk - ϕl
     dp = pk - pl
 
     f[iϕ] = ε * ε_0 * dϕ * !eneutral
