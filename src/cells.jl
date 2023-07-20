@@ -258,6 +258,8 @@ Calculate molar reaction rates and bulk flux rates for each voltage in `voltages
 function ivsweep(sys;
                  voltages = (-0.5:0.1:0.5) * ufac"V",
                  store_solutions = false,
+                 more_pre  = (args...) -> nothing,
+                 more_post = (args...) -> nothing,
                  solver_kwargs...)
     ranges = splitz(voltages)
     F = ph"N_A*e"
@@ -300,6 +302,7 @@ function ivsweep(sys;
         @withprogress begin
             function pre(sol, ϕ)
                 data.ϕ_we = dir * ϕ
+                more_pre(sol, ϕ)
             end
 
             function post(sol, oldsol, ϕ, Δϕ)
@@ -317,6 +320,7 @@ function ivsweep(sys;
                 end
                 ϕprogress += abs(Δϕ)
                 @logprogress ϕprogress / allprogress
+                more_post(sol, oldsol, ϕ, Δϕ)
             end
 
             function delta(sys, u, v, t, Δt)
