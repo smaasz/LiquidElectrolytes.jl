@@ -14,31 +14,31 @@ macro bind(def, element)
     end
 end
 
-# ╔═╡ 59d5a079-bacd-4f06-b851-1e38ea5db2d1
+# ╔═╡ 5874f7fa-1bf8-11ee-0ace-859064fd872c
 begin
     import Pkg as _Pkg
-    developing = false
-    if isfile(joinpath(@__DIR__, "..", "src", "LiquidElectrolytes.jl"))
-        _Pkg.activate(@__DIR__)
-        _Pkg.instantiate()
-        _Pkg.develop(path=joinpath(@__DIR__, ".."))
-        using Revise
-        developing = true
+    haskey(ENV,"PLUTO_PROJECT") && _Pkg.activate(ENV["PLUTO_PROJECT"])
+    using Revise
+    using LessUnitful
+    using ExtendableGrids,GridVisualize
+    using LiquidElectrolytes
+    using VoronoiFVM
+    using InteractiveUtils
+    using ForwardDiff
+    using PlutoUI
+    if isdefined(Main,:PlutoRunner)
+        using PyPlot,Colors 
+   	default_plotter!(PyPlot)
     end
-    initialized = true
-end;
-
-# ╔═╡ 5874f7fa-1bf8-11ee-0ace-859064fd872c
-if initialized
-	using LessUnitful
-	using ExtendableGrids,GridVisualize
-	using LiquidElectrolytes
-	using VoronoiFVM
-	using PyPlot,Colors 
-	using InteractiveUtils
-	using ForwardDiff
-	using PlutoUI
 end
+
+# ╔═╡ 39e030bf-2280-4c24-9f7f-3f4c0b1ca2b0
+md"""
+# Surface kinetics
+"""
+
+# ╔═╡ f73b2304-0c5a-45b4-9807-1fe068ef4dc9
+pkgdir(LiquidElectrolytes)
 
 # ╔═╡ c0f31ee2-fb00-4bd0-9762-81d3791695de
 @unitfactors eV V
@@ -85,7 +85,6 @@ function main(;nref=0,
               molarities=[0.001,0.01,0.1,1],
               scheme=:μex,
               κ=10.0,
-              Plotter=PyPlot,
               new=false,
               kwargs...)
 
@@ -221,7 +220,7 @@ function main(;nref=0,
 	currs=LiquidElectrolytes.currents(result,iaplus)
 	volts=result.voltages
 	
-    vis=GridVisualizer(;Plotter, layout=(1,1))
+    vis=GridVisualizer(;layout=(1,1))
     scalarplot!(vis[1,1], volts, currs*ufac"cm^2/mA",color="red",markershape=:utriangle,markersize=7, markevery=10,label="PNP",clear=true,legend=:lt,xlabel="Δϕ/V",ylabel="I/(mA/cm^2)")
     #scalarplot!(vis[2,1], sigmas, energies, color="black",clear=true,xlabel="σ/(μC/cm^s)",ylabel="ΔE/eV")
     #scalarplot!(vis[2,1], ϕs, rs, xlimits=(-1.5,-0.6), yscale=:log, xlabel="Δϕ/V", ylabel="c(CO2)/M")
@@ -239,9 +238,6 @@ main(; 	ΔG_ads_σ0_aplus=ΔG_ads_σ0_aplus * eV,
 		ΔG_rxn_U0=ΔG_rxn_U0 * eV,
 		ϕ_pzc=ϕ_pzc
 )
-
-# ╔═╡ 5fcf72f9-ad89-4ec2-9dd6-a688b8615d4d
-
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -397,16 +393,6 @@ git-tree-sha1 = "e30f2f4e20f7f186dc36529910beaedc60cfa644"
 uuid = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
 version = "1.16.0"
 
-[[deps.ChangesOfVariables]]
-deps = ["LinearAlgebra", "Test"]
-git-tree-sha1 = "2fba81a302a7be671aefe194f0525ef231104e7f"
-uuid = "9e997f8a-9a97-42d5-a9f1-ce6bfc15e2c0"
-version = "0.1.8"
-weakdeps = ["InverseFunctions"]
-
-    [deps.ChangesOfVariables.extensions]
-    ChangesOfVariablesInverseFunctionsExt = "InverseFunctions"
-
 [[deps.CloseOpenIntervals]]
 deps = ["Static", "StaticArrayInterface"]
 git-tree-sha1 = "70232f82ffaab9dc52585e0dd043b5e0c6b714f1"
@@ -528,12 +514,6 @@ version = "1.0.0"
 deps = ["Printf"]
 uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
 
-[[deps.DensityInterface]]
-deps = ["InverseFunctions", "Test"]
-git-tree-sha1 = "80c3e8639e3353e5d2912fb3a1916b8455e2494b"
-uuid = "b429d917-457f-4dbc-8f4c-0cc954292b1d"
-version = "0.4.0"
-
 [[deps.DiffResults]]
 deps = ["StaticArraysCore"]
 git-tree-sha1 = "782dd5f4561f5d267313f23853baaaa4c52ea621"
@@ -561,11 +541,14 @@ deps = ["FillArrays", "LinearAlgebra", "PDMats", "Printf", "QuadGK", "Random", "
 git-tree-sha1 = "e76a3281de2719d7c81ed62c6ea7057380c87b1d"
 uuid = "31c24e10-a181-5473-b8eb-7969acd0382f"
 version = "0.25.98"
-weakdeps = ["ChainRulesCore", "DensityInterface"]
 
     [deps.Distributions.extensions]
     DistributionsChainRulesCoreExt = "ChainRulesCore"
     DistributionsDensityInterfaceExt = "DensityInterface"
+
+    [deps.Distributions.weakdeps]
+    ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+    DensityInterface = "b429d917-457f-4dbc-8f4c-0cc954292b1d"
 
 [[deps.DocStringExtensions]]
 deps = ["LibGit2"]
@@ -835,12 +818,6 @@ git-tree-sha1 = "16c0cc91853084cb5f58a78bd209513900206ce6"
 uuid = "8197267c-284f-5f27-9208-e0e47529a953"
 version = "0.7.4"
 
-[[deps.InverseFunctions]]
-deps = ["Test"]
-git-tree-sha1 = "edd1c1ac227767c75e8518defdf6e48dbfa7c3b0"
-uuid = "3587e190-3f89-42d0-90ee-14403ec27112"
-version = "0.1.10"
-
 [[deps.IrrationalConstants]]
 git-tree-sha1 = "630b497eafcc20001bba38a4651b327dcfc491d2"
 uuid = "92d709cd-6900-40b7-9082-c6be49f344b6"
@@ -1015,12 +992,16 @@ deps = ["DocStringExtensions", "IrrationalConstants", "LinearAlgebra"]
 git-tree-sha1 = "c3ce8e7420b3a6e071e0fe4745f5d4300e37b13f"
 uuid = "2ab3a3ac-af41-5b50-aa03-7779005ae688"
 version = "0.3.24"
-weakdeps = ["ChainRulesCore", "ChangesOfVariables", "InverseFunctions"]
 
     [deps.LogExpFunctions.extensions]
     LogExpFunctionsChainRulesCoreExt = "ChainRulesCore"
     LogExpFunctionsChangesOfVariablesExt = "ChangesOfVariables"
     LogExpFunctionsInverseFunctionsExt = "InverseFunctions"
+
+    [deps.LogExpFunctions.weakdeps]
+    ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+    ChangesOfVariables = "9e997f8a-9a97-42d5-a9f1-ce6bfc15e2c0"
+    InverseFunctions = "3587e190-3f89-42d0-90ee-14403ec27112"
 
 [[deps.Logging]]
 uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
@@ -1497,11 +1478,14 @@ deps = ["HypergeometricFunctions", "IrrationalConstants", "LogExpFunctions", "Re
 git-tree-sha1 = "f625d686d5a88bcd2b15cd81f18f98186fdc0c9a"
 uuid = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
 version = "1.3.0"
-weakdeps = ["ChainRulesCore", "InverseFunctions"]
 
     [deps.StatsFuns.extensions]
     StatsFunsChainRulesCoreExt = "ChainRulesCore"
     StatsFunsInverseFunctionsExt = "InverseFunctions"
+
+    [deps.StatsFuns.weakdeps]
+    ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+    InverseFunctions = "3587e190-3f89-42d0-90ee-14403ec27112"
 
 [[deps.StrideArraysCore]]
 deps = ["ArrayInterface", "CloseOpenIntervals", "IfElse", "LayoutPointers", "ManualMemory", "SIMDTypes", "Static", "StaticArrayInterface", "ThreadingUtilities"]
@@ -1637,11 +1621,14 @@ deps = ["Dates", "LinearAlgebra", "Random"]
 git-tree-sha1 = "c4d2a349259c8eba66a00a540d550f122a3ab228"
 uuid = "1986cc42-f94f-5a68-af5c-568840ba703d"
 version = "1.15.0"
-weakdeps = ["ConstructionBase", "InverseFunctions"]
 
     [deps.Unitful.extensions]
     ConstructionBaseUnitfulExt = "ConstructionBase"
     InverseFunctionsUnitfulExt = "InverseFunctions"
+
+    [deps.Unitful.weakdeps]
+    ConstructionBase = "187b0558-2788-49d3-abe0-74a17ed4e7c9"
+    InverseFunctions = "3587e190-3f89-42d0-90ee-14403ec27112"
 
 [[deps.Unityper]]
 deps = ["ConstructionBase"]
@@ -1711,8 +1698,9 @@ version = "17.4.0+0"
 """
 
 # ╔═╡ Cell order:
-# ╠═59d5a079-bacd-4f06-b851-1e38ea5db2d1
+# ╟─39e030bf-2280-4c24-9f7f-3f4c0b1ca2b0
 # ╠═5874f7fa-1bf8-11ee-0ace-859064fd872c
+# ╠═f73b2304-0c5a-45b4-9807-1fe068ef4dc9
 # ╠═c0f31ee2-fb00-4bd0-9762-81d3791695de
 # ╟─1c25721e-aa69-4134-acb6-caa6ad04d4bc
 # ╟─4dc6ae69-af8a-4f3a-ae75-380abe8348fb
@@ -1722,6 +1710,5 @@ version = "17.4.0+0"
 # ╟─42e17b2b-30f7-46c0-87f0-57ad721b6673
 # ╠═aacf735c-9636-48b8-b280-40082253e71b
 # ╠═bb86cb35-1d23-4761-b25a-5af7f640a4d8
-# ╠═5fcf72f9-ad89-4ec2-9dd6-a688b8615d4d
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

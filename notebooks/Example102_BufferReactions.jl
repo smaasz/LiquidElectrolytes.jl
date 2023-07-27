@@ -14,31 +14,23 @@ macro bind(def, element)
     end
 end
 
-# ╔═╡ 72780458-2175-11ee-14d0-c75cccf64639
+# ╔═╡ 3b5a64e6-24cd-423e-aad8-8f400b338867
 begin
     import Pkg as _Pkg
-    developing = false
-    if isfile(joinpath(@__DIR__, "..", "src", "LiquidElectrolytes.jl"))
-        _Pkg.activate(@__DIR__)
-        _Pkg.instantiate()
-        _Pkg.develop(path=joinpath(@__DIR__, ".."))
-        using Revise
-        developing = true
-    end
-    initialized = true
-end;
-
-# ╔═╡ 3b5a64e6-24cd-423e-aad8-8f400b338867
-if initialized
-	using LessUnitful
-	using ExtendableGrids,GridVisualize
-	using LiquidElectrolytes
-	using VoronoiFVM
-	using InteractiveUtils
-	using ForwardDiff
-	using PlutoUI
-	using PlutoVista
+    haskey(ENV,"PLUTO_PROJECT") && _Pkg.activate(ENV["PLUTO_PROJECT"])
+    using Revise
+    using LessUnitful
+    using ExtendableGrids,GridVisualize
+    using LiquidElectrolytes
+    using VoronoiFVM
+    using InteractiveUtils
+    using ForwardDiff
+    using PlutoUI
+    using PlutoVista
 end
+
+# ╔═╡ b263c6bf-3606-4c3d-9fe1-5d074b294519
+pkgdir(LiquidElectrolytes)
 
 # ╔═╡ 7ac7bb02-886f-4b5e-90ef-1a5427210adc
 @unitfactors mol dm eV μA μF cm μm;
@@ -1864,8 +1856,8 @@ version = "17.4.0+0"
 """
 
 # ╔═╡ Cell order:
-# ╠═72780458-2175-11ee-14d0-c75cccf64639
 # ╠═3b5a64e6-24cd-423e-aad8-8f400b338867
+# ╠═b263c6bf-3606-4c3d-9fe1-5d074b294519
 # ╠═7ac7bb02-886f-4b5e-90ef-1a5427210adc
 # ╠═e8de40fe-472e-437f-92c8-5f75f5d58601
 # ╟─28309673-e34e-4bf3-9c53-d04a283364ef

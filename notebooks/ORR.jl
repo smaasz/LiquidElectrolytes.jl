@@ -18,6 +18,7 @@ end
 begin
     import Pkg as _Pkg
     haskey(ENV,"PLUTO_PROJECT") && _Pkg.activate(ENV["PLUTO_PROJECT"])
+    using Revise
     using PlutoUI, HypertextLiteral
     using LiquidElectrolytes
     using LessUnitful
@@ -35,7 +36,21 @@ begin
 end
 
 # ╔═╡ 1f5732a6-c15a-4df0-8927-f1e031643d26
+md"""
+# ORR.jl
+"""
 
+# ╔═╡ b609ba76-e066-4192-a2fc-97b9e659fa12
+md"""
+Demonstration of oxygen reduction reaction
+"""
+
+# ╔═╡ 5482615c-cb5b-4c44-99c4-19416eabae7f
+md"""
+```math
+  4H^+ + O_2 + 4e^- \leftrightharpoons  2H_2O
+```
+"""
 
 # ╔═╡ 9eebfe1a-2d14-4b9f-a697-71078be8c6d9
 pkgdir(LiquidElectrolytes)
@@ -101,13 +116,6 @@ solver_control = (max_round = 4,
 # ╔═╡ 970389b5-d2c1-4992-9978-aca1ccd3d2fc
 md"""
 ### Reaction description
-"""
-
-# ╔═╡ 5482615c-cb5b-4c44-99c4-19416eabae7f
-md"""
-```math
-  4H^+ + O_2 + 4e^- \leftrightharpoons  2H_2O
-```
 """
 
 # ╔═╡ 136cf1aa-75c6-4aaa-b93b-801391ec800c
@@ -492,6 +500,7 @@ LessUnitful = "f29f6376-6e90-4d80-80c9-fb8ec61203d5"
 LiquidElectrolytes = "5a7dfd8c-b3af-4c8d-a082-d3a774d75e72"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
+Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 VoronoiFVM = "82b139dc-5afc-11e9-35da-9b9bdfd336f3"
@@ -505,6 +514,7 @@ Interpolations = "~0.14.7"
 LessUnitful = "~0.6.1"
 LiquidElectrolytes = "~0.0.21"
 PlutoUI = "~0.7.51"
+Revise = "~3.5.3"
 StaticArrays = "~1.5.26"
 VoronoiFVM = "~1.9.0"
 """
@@ -515,7 +525,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.9.2"
 manifest_format = "2.0"
-project_hash = "21b1bce9d9af579e12d7a6f41230c826226e7558"
+project_hash = "60444a2a4a74145194de07838b7985dd6ee0de79"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "e58c18d2312749847a74f5be80bb0fa53da102bd"
@@ -705,6 +715,12 @@ deps = ["Static", "StaticArrayInterface"]
 git-tree-sha1 = "70232f82ffaab9dc52585e0dd043b5e0c6b714f1"
 uuid = "fb6a15b2-703c-40df-9091-08a04967cfa9"
 version = "0.1.12"
+
+[[deps.CodeTracking]]
+deps = ["InteractiveUtils", "UUIDs"]
+git-tree-sha1 = "d730914ef30a06732bdd9f763f6cc32e92ffbff1"
+uuid = "da1fd8a2-8d9e-5ec2-8556-3022fb5608a2"
+version = "1.3.1"
 
 [[deps.CodecZlib]]
 deps = ["TranscodingStreams", "Zlib_jll"]
@@ -1329,6 +1345,12 @@ git-tree-sha1 = "6f2675ef130a300a112286de91973805fcc5ffbc"
 uuid = "aacddb02-875f-59d6-b918-886e6ef4fbf8"
 version = "2.1.91+0"
 
+[[deps.JuliaInterpreter]]
+deps = ["CodeTracking", "InteractiveUtils", "Random", "UUIDs"]
+git-tree-sha1 = "6a125e6a4cb391e0b9adbd1afa9e771c2179f8ef"
+uuid = "aa1ae85d-cabe-5617-a682-6adf51b2e16a"
+version = "0.9.23"
+
 [[deps.KLU]]
 deps = ["LinearAlgebra", "SparseArrays", "SuiteSparse_jll"]
 git-tree-sha1 = "764164ed65c30738750965d55652db9c94c59bfe"
@@ -1551,6 +1573,12 @@ weakdeps = ["ChainRulesCore", "ForwardDiff", "SpecialFunctions"]
     [deps.LoopVectorization.extensions]
     ForwardDiffExt = ["ChainRulesCore", "ForwardDiff"]
     SpecialFunctionsExt = "SpecialFunctions"
+
+[[deps.LoweredCodeUtils]]
+deps = ["JuliaInterpreter"]
+git-tree-sha1 = "60168780555f3e663c536500aa790b6368adc02a"
+uuid = "6f1432cf-f94c-5a45-995e-cdbf5db27b0b"
+version = "2.3.0"
 
 [[deps.MIMEs]]
 git-tree-sha1 = "65f28ad4b594aebe22157d6fac869786a255b7eb"
@@ -1986,6 +2014,12 @@ deps = ["UUIDs"]
 git-tree-sha1 = "838a3a4188e2ded87a4f9f184b4b0d78a1e91cb7"
 uuid = "ae029012-a4dd-5104-9daa-d747884805df"
 version = "1.3.0"
+
+[[deps.Revise]]
+deps = ["CodeTracking", "Distributed", "FileWatching", "JuliaInterpreter", "LibGit2", "LoweredCodeUtils", "OrderedCollections", "Pkg", "REPL", "Requires", "UUIDs", "Unicode"]
+git-tree-sha1 = "1e597b93700fa4045d7189afa7c004e0584ea548"
+uuid = "295af30f-e4ad-537b-8983-00126c2a3abe"
+version = "3.5.3"
 
 [[deps.Rmath]]
 deps = ["Random", "Rmath_jll"]
@@ -2562,6 +2596,8 @@ version = "3.5.0+0"
 
 # ╔═╡ Cell order:
 # ╟─1f5732a6-c15a-4df0-8927-f1e031643d26
+# ╟─b609ba76-e066-4192-a2fc-97b9e659fa12
+# ╟─5482615c-cb5b-4c44-99c4-19416eabae7f
 # ╠═60941eaa-1aea-11eb-1277-97b991548781
 # ╠═9eebfe1a-2d14-4b9f-a697-71078be8c6d9
 # ╟─84e05551-7d51-4b2c-88f2-b186ad6a244a
@@ -2572,7 +2608,6 @@ version = "3.5.0+0"
 # ╟─231ebfc2-51b6-4027-8be2-75891dfed7e0
 # ╠═a4e0379d-f7f6-4b61-bf38-5eb17f67505a
 # ╟─970389b5-d2c1-4992-9978-aca1ccd3d2fc
-# ╟─5482615c-cb5b-4c44-99c4-19416eabae7f
 # ╟─136cf1aa-75c6-4aaa-b93b-801391ec800c
 # ╠═b916eb92-8ba8-49aa-bd7c-1bfc91e813d4
 # ╟─420a82e0-5fc2-47ea-8916-d88910655d50
