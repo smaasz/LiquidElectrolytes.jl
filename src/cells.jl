@@ -116,7 +116,7 @@ Assumptions:
 """
 function dlcapsweep(sys;
                     data=electrolytedata(sys),
-                    inival = pnpunknowns(sys),
+                    inival = nothing,
                     iϕ = data.iϕ,
                     voltages = (-1:0.1:1) * ufac"V",
                     δ = 1.0e-4,
@@ -135,7 +135,11 @@ function dlcapsweep(sys;
 
     data.c_bulk .= molarity
 
-    inival = solve(sys; inival)
+    if isnothing(inival)
+        inival=pnpunknowns(sys)
+    end 
+
+    inival = solve(sys; inival,damp_initial=0.1)
     allprogress = sum(length, ranges)
     ϕprogress = 0
 
