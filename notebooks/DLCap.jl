@@ -17,11 +17,11 @@ begin
     using ExtendableGrids
     using LessUnitful
     using GridVisualize
-    using Colors
     if isdefined(Main,:PlutoRunner)
+    using Colors
 	using CairoMakie	
-		default_plotter!(CairoMakie)
-		CairoMakie.activate!(type="svg")
+	default_plotter!(CairoMakie)
+	CairoMakie.activate!(type="svg")
     end
 end;
 
@@ -261,14 +261,14 @@ VoronoiFVM = "82b139dc-5afc-11e9-35da-9b9bdfd336f3"
 [compat]
 CairoMakie = "~0.10.7"
 Colors = "~0.12.10"
-ExtendableGrids = "~1.0.0"
+ExtendableGrids = "~1.1.0"
 GridVisualize = "~1.1.4"
 HypertextLiteral = "~0.9.4"
 LessUnitful = "~0.6.1"
-LiquidElectrolytes = "~0.0.2"
+LiquidElectrolytes = "~0.2.0"
 PlutoUI = "~0.7.52"
 Revise = "~3.5.3"
-VoronoiFVM = "~1.13.0"
+VoronoiFVM = "~1.13.1"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -277,7 +277,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.9.2"
 manifest_format = "2.0"
-project_hash = "d822b26af5162b66f44d5be4fba035440d8dd8e7"
+project_hash = "523adf6f5b1ba4a11621acdb51271e31af934176"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "f5c25e8a5b29b5e941b7408bc8cc79fea4d9ef9a"
@@ -562,12 +562,6 @@ deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
 version = "1.0.5+0"
 
-[[deps.CompositeStructs]]
-deps = ["MacroTools"]
-git-tree-sha1 = "cc3eee93641dfc72dab4dd1830014eae644dcb96"
-uuid = "534720e6-2374-40c5-8712-bf9a2f1643c6"
-version = "0.1.4"
-
 [[deps.CompositeTypes]]
 git-tree-sha1 = "02d2316b7ffceff992f3096ae48c7829a8aa0638"
 uuid = "b152e2b5-7a66-4b01-a709-34e65c35f657"
@@ -734,10 +728,16 @@ uuid = "e2ba6199-217a-4e67-a87a-7c52f15ade04"
 version = "0.1.10"
 
 [[deps.ExtendableGrids]]
-deps = ["AbstractTrees", "Dates", "DocStringExtensions", "ElasticArrays", "InteractiveUtils", "LinearAlgebra", "Printf", "Random", "SparseArrays", "StaticArrays", "Test", "WriteVTK"]
-git-tree-sha1 = "da7f1d5dcc8d120e4beeea2a4ecdd9183cd1989f"
+deps = ["AbstractTrees", "Bijections", "Dates", "DocStringExtensions", "ElasticArrays", "InteractiveUtils", "LinearAlgebra", "Printf", "Random", "Requires", "SparseArrays", "StaticArrays", "StatsBase", "Test", "WriteVTK"]
+git-tree-sha1 = "3f0e26d8ba5603978daeb54aa02de4a52593c3f5"
 uuid = "cfc395e8-590f-11e8-1f13-43a2532b2fa8"
-version = "1.0.0"
+version = "1.1.0"
+
+    [deps.ExtendableGrids.extensions]
+    ExtendableGridsGmshExt = "Gmsh"
+
+    [deps.ExtendableGrids.weakdeps]
+    Gmsh = "705231aa-382f-11e9-3f0c-b7cb4346fdeb"
 
 [[deps.ExtendableSparse]]
 deps = ["DocStringExtensions", "ILUZero", "LinearAlgebra", "Printf", "Requires", "SparseArrays", "Sparspak", "StaticArrays", "SuiteSparse", "Test"]
@@ -1365,10 +1365,10 @@ version = "2.4.1"
     Pardiso = "46dd5b70-b6fb-5a00-ae2d-e8fea33afaf2"
 
 [[deps.LiquidElectrolytes]]
-deps = ["CodeTracking", "Colors", "CompositeStructs", "DocStringExtensions", "ExtendableGrids", "GridVisualize", "InteractiveUtils", "LinearAlgebra", "Markdown", "NLsolve", "Parameters", "PhysicalConstants", "PlutoUI", "ProgressLogging", "StaticArrays", "Test", "Unitful", "VoronoiFVM"]
-git-tree-sha1 = "5cb1cf3dc79ee858cbc8ba720857c0ae2c91330c"
+deps = ["DocStringExtensions", "ExtendableGrids", "ForwardDiff", "InteractiveUtils", "LessUnitful", "LinearAlgebra", "Markdown", "NLsolve", "PhysicalConstants", "ProgressLogging", "RecursiveArrayTools", "StaticArrays", "Test", "Unitful", "VoronoiFVM"]
+git-tree-sha1 = "b674a48a31c0e31ff4416179dd30ea81bddfb64a"
 uuid = "5a7dfd8c-b3af-4c8d-a082-d3a774d75e72"
-version = "0.0.2"
+version = "0.2.0"
 
 [[deps.LogExpFunctions]]
 deps = ["DocStringExtensions", "IrrationalConstants", "LinearAlgebra"]
@@ -2343,9 +2343,9 @@ version = "0.2.0"
 
 [[deps.VoronoiFVM]]
 deps = ["BandedMatrices", "CommonSolve", "DiffResults", "DocStringExtensions", "ExtendableGrids", "ExtendableSparse", "ForwardDiff", "GridVisualize", "InteractiveUtils", "JLD2", "LinearAlgebra", "LinearSolve", "PrecompileTools", "Printf", "Random", "RecursiveArrayTools", "RecursiveFactorization", "SparseArrays", "SparseDiffTools", "StaticArrays", "Statistics", "SuiteSparse", "Symbolics", "Test"]
-git-tree-sha1 = "c179338b00b85d2ab9e9249598adf7f8edd410b1"
+git-tree-sha1 = "ac46833a2c2889408f0b1fcfef92e6a89b0f68be"
 uuid = "82b139dc-5afc-11e9-35da-9b9bdfd336f3"
-version = "1.13.0"
+version = "1.13.1"
 
 [[deps.WoodburyMatrices]]
 deps = ["LinearAlgebra", "SparseArrays"]

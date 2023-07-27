@@ -110,9 +110,16 @@ end
 end
 
 
-notebooks=["ORR.jl"]
+notebooks=[ "DLCap.jl",
+            "ORR.jl",
+            "Equilibrium1D.jl",
+            "PoissonBoltzmann.jl",
+            "Example112_surface-kinetics.jl",
+            "Example102_BufferReactions.jl"]
 
 function test_as_script(notebookname;verbose=false)
+    nbb=basename(notebookname)
+    @info "run notebook $(nbb) as script..."
     modname="mod"*string(uuid1())[1:8]
     notebook="module $(modname)\n\n"
     notebook*=read(notebookname,String)
@@ -122,7 +129,7 @@ function test_as_script(notebookname;verbose=false)
             eval(Meta.parse(notebook))
         end
     end
-    @info "notebook executed in $(round(t,sigdigits=4)) seconds"
+    @info "$(nbb) executed in $(round(t,sigdigits=4)) seconds"
 end
 
 @testset "notebooks" begin
