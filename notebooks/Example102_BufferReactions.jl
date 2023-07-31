@@ -328,12 +328,12 @@ function plot1d(result, celldata, vshow)
 	end
 	
 	reveal(vis)
-end;
+end
 
 # ╔═╡ 2856bb6b-7478-4696-98f4-ed5e233cb4ca
 plot1d(result, celldata, vshow)
 
-# ╔═╡ 4b4fc76c-c54d-45f0-a379-2e2286d609df
+# ╔═╡ 2a1ff350-0da1-4fa0-9e8d-2975c6d2d81e
 TableOfContents(title="📚 Table of Contents", indent=true, depth=4, aside=true)
 
 # ╔═╡ 4f56ddcf-5001-4f0f-b7de-b9c311f749a4
@@ -2032,9 +2032,9 @@ version = "17.4.0+0"
 # ╟─52051ed4-342e-48e2-a759-ee6c73378f3a
 # ╟─2856bb6b-7478-4696-98f4-ed5e233cb4ca
 # ╟─7b21cabc-651b-4bb0-be12-c0cccbc8b352
-# ╠═bf4d2747-0b36-41b5-a779-179f1897a4c6
-# ╟─4b4fc76c-c54d-45f0-a379-2e2286d609df
-# ╠═c875fc12-4c92-42f9-82ef-34ba242899c9
+# ╟─bf4d2747-0b36-41b5-a779-179f1897a4c6
+# ╟─c875fc12-4c92-42f9-82ef-34ba242899c9
+# ╠═2a1ff350-0da1-4fa0-9e8d-2975c6d2d81e
 # ╟─4f56ddcf-5001-4f0f-b7de-b9c311f749a4
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

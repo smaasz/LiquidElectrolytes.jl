@@ -85,7 +85,7 @@ md"""
 # ╔═╡ c0f31ee2-fb00-4bd0-9762-81d3791695de
 begin
 	@unitfactors eV V μF cm K mol m A s dm μm nm;
-	@phconstants N_A e R ε_0 k_B
+	@phconstants N_A e R k_B
 	F = N_A * e
 end;
 
@@ -97,18 +97,18 @@ md"""
 # ╔═╡ 2e585c01-717b-43c0-a79b-2c574c6fdd11
 begin
 	const T = (273.15 + 25) * K
-	const C_gap = 20 * μF/cm^2
+	const C_gap = 20 * μF / cm^2
 	const ϕ_pzc = 0.1 * V
 
 	const S = 1.0e-6 / N_A * (1.0e10)^2 * mol / m^2
 
-	const ΔG_ads_σ0_aplus = -1.0 * eV
-	const ΔG_ads_σ0_a = -0.5 * eV
+	const ΔG_ads_σ0_aplus = -0.01 * eV
+	const ΔG_ads_σ0_a = -0.005 * eV
 
-	const b_ads_aplus = -0.5 * eV * m^2 / (A * s)
-	const b_ads_a = 0.0 * eV * m^2 / (A * s)
+	const b_ads_aplus = 0.5 * eV * m^2 / (A * s)
+	const b_ads_a = 0.25 * eV * m^2 / (A * s)
 
-	const ΔG_rxn_U0 = -0.5 * eV
+	const ΔG_rxn_U0 = -0.1 * eV
 	
 	const vmin = -1 * V
 	const vmax =  1 * V
@@ -127,11 +127,11 @@ end;
 
 # ╔═╡ 7293cb64-b3a4-4ec3-aff5-b62104716e1b
 const bulk = DataFrame(
-  :name => ["A⁺", "B⁻", "A"],
-  :z 	=> [1, -1, 0],
-  :D 	=> [2.0e-9,2.0e-9,2.0e-9] * m^2/s,
-  :κ    => [8.0, 4.0, 2.0],
-  :c_bulk=>[0.1, 0.1, 0.001] * mol/dm^3
+  :name 	=> ["A⁺", "B⁻", "A"],
+  :z 		=> [1, -1, 0],
+  :D 		=> [2.0e-9, 2.0e-9, 2.0e-9] * m^2/s,
+  :κ    	=> [8.0, 4.0, 2.0],
+  :c_bulk 	=> [0.1, 0.1, 0.1] * mol/dm^3
 )
 
 # ╔═╡ 32704bd9-840c-48df-9174-ccec27dea865
@@ -140,17 +140,20 @@ md"""
 """
 
 # ╔═╡ 54e39b03-e646-474a-8ba2-99979a99b201
-function rateconstants!(k, σ, ϕ_we)
+function rateconstants!(k, σ, ϕ_we, ϕ)
 	(kf, kr) = k
 
+	println("σ at $ϕ_we: $(ForwardDiff.value(σ))")
 	# A+_aq <-> A+_ads,	                    #1
 	ΔG_ads_aplus = ΔG_ads_σ0_aplus + b_ads_aplus * σ
+	println("ΔG_ads at $ϕ_we = $(ForwardDiff.value(ΔG_ads_aplus))")
 
 	kf[1] = 1.0e13 * exp(-max(ΔG_ads_aplus, 0.0) / (k_B * T))
 	kr[1] = 1.0e13 * exp(-max(-ΔG_ads_aplus, 0.0) / (k_B * T))
 
 	# A+_ads + e- <-> A_ads,                #2          
-	ΔG_rxn = ΔG_rxn_U0 + ϕ_we * eV
+	ΔG_rxn = ΔG_rxn_U0 + (ϕ_we - ϕ) * eV
+	println("ΔG_rxn at $ϕ_we = $(ForwardDiff.value(ΔG_rxn))")
 
 	kf[2] = 1.0e13 * exp(-max(ΔG_rxn, 0.0) / (k_B * T))
 	kr[2] = 1.0e13 * exp(-max(-ΔG_rxn, 0.0) / (k_B * T))
@@ -178,7 +181,7 @@ function breactions(
 		kf = zeros(Tval, 3)
 		kr = zeros(Tval, 3)
 
-		rateconstants!((kf, kr), σ, ϕ_we)
+		rateconstants!((kf, kr), σ, ϕ_we, u[iϕ])
 
 		rates = zeros(Tval, 3)
 
@@ -229,7 +232,7 @@ md"""
 
 # ╔═╡ a12023d9-44b6-4db9-9b37-05b3c371327b
 begin
-	hmin    = 1.0e-4 * nm * 2.0^(-nref)
+	hmin    = 1.0e-2 * nm * 2.0^(-nref)
     hmax    = 1.0 * nm * 2.0^(-nref)
     L       = 20.0 * nm
     X       = geomspace(0, L, hmin, hmax)
@@ -403,9 +406,9 @@ function cplot(cell, result)
                 title = "A⁺",
                 colormap = :summer)
     scalarplot!(vis[1, 3],
-                1000 * tsol[ia, 1, :] * scale,
+                tsol[ia, 1, :] * scale,
                 tsol.t;
-                label = "1000*A",
+                label = "A",
                 xlabel = "c",
                 color = :green,
                 clear = false)
@@ -2112,9 +2115,9 @@ version = "17.4.0+0"
 # ╠═7002cb8e-8010-4b60-a707-7537c494636f
 # ╠═fb0530a9-9ecf-4eda-83c1-89de6ee93d0d
 # ╟─d1fec937-c3fa-41a4-bfbd-f73bcc2e6015
-# ╠═f53c55dd-cb8f-4bb4-91f2-3311abe1a9d3
-# ╠═c3385ba7-357a-41bb-87d3-dc34739669c5
-# ╠═0b31ab30-16f4-4c45-abe9-792fa12400b4
+# ╟─f53c55dd-cb8f-4bb4-91f2-3311abe1a9d3
+# ╟─c3385ba7-357a-41bb-87d3-dc34739669c5
+# ╟─0b31ab30-16f4-4c45-abe9-792fa12400b4
 # ╟─8812965c-9ab9-47c7-9ca2-7d08c8157a69
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
