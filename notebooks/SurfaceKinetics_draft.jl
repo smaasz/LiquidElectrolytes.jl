@@ -60,7 +60,12 @@ A simplified microkinetic model for the surface reactions is applied that contai
 2. Electron transfer: $A^+_{ads} + e^- \rightleftharpoons A_{ads}$
 3. Desorption: $A_{ads} \rightleftharpoons A_{aq}$.
 
-A mean-field approach using the law of mass action is applied. No transition states between the reactants are assumed. The reaction rate constants are model by the Arrhenius relation with pre-exponential factors of size 10¹³. A linear scaling of the adsorption energies with the (excess) surface charge at the electrode is assumed:
+A mean-field approach using the law of mass action is applied. No transition states between the reactants are assumed. The reaction rate constants are model by the Arrhenius relation with pre-exponential factors of size 10¹³. 
+
+
+
+
+A linear scaling of the adsorption energies with the (excess) surface charge at the electrode is assumed:
 
 $ΔG_{ads}(σ) = ΔG_{ads}(σ = 0) + b * σ$
 
@@ -100,20 +105,21 @@ md"""
 begin
 	const T = (273.15 + 25) * K
 	const C_gap = 20 * μF / cm^2
-	const ϕ_pzc = 0.1 * V
+	const ϕ_pzc = 0.0 * V
 
 	const S = 1.0e-5 / N_A * (1.0e10)^2 * mol / m^2
+	const β = 0.5
 
-	const ΔG_ads_σ0_aplus = -0.01 * eV
-	const ΔG_ads_σ0_a = -0.005 * eV
-
-	const b_ads_aplus = 0.5 * eV * m^2 / (A * s)
-	const b_ads_a = 0.25 * eV * m^2 / (A * s)
-
-	const ΔG_rxn_U0 = -0.1 * eV
+	const Gf⁰_A 			= 0 * eV
+	const Gf⁰_A⁺ 			= 0 * eV
+	const Gf⁰_A_ads  		= -0.3 * eV
+	const Gf⁰_A⁺_ads 		= -0.5 * eV
+	const Gf⁰_A⁺_e⁻_ads(Δϕ) = -0.4 * eV - β * Δϕ * e
+	const Gf⁰_e⁻(Δϕ) 		= -Δϕ * e
+	const Gf⁰_site   		= 0 * eV
 	
-	const vmin = -0.2 * V
-	const vmax =  0.3 * V
+	const vmin = -4.0 * V
+	const vmax =  0.0 * V
 	const vdelta = 0.1 * V
 
 	const nref = 0
@@ -133,7 +139,9 @@ const bulk = DataFrame(
   :z 		=> [1, -1, 0],
   :D 		=> [2.0e-9, 2.0e-9, 2.0e-9] * m^2/s,
   :κ    	=> [8.0, 4.0, 2.0],
-  :c_bulk 	=> [0.1, 0.1, 0.1] * mol/dm^3
+  :c_bulk 	=> [0.1, 0.1, 0.01] * mol/dm^3,
+  :v        => [2e-5, 2e-5, 2e-5],
+  :M        => [0.02, 0.02, 0.02],
 )
 
 # ╔═╡ 32704bd9-840c-48df-9174-ccec27dea865
@@ -142,29 +150,27 @@ md"""
 """
 
 # ╔═╡ 54e39b03-e646-474a-8ba2-99979a99b201
-function rateconstants!(k, σ, ϕ_we, ϕ)
-	(kf, kr) = k
+begin
+	Eₐ(ΔGf) = max(0.0, ΔGf)
+	k_Arr(Eₐ) 	= 1.0e13 * exp(-Eₐ/ (k_B * T))
 
-	#println("σ 	   (at ϕ_we = $(@sprintf("%+1.2f", ϕ_we))) = $(ForwardDiff.value(σ))")
-	# A+_aq <-> A+_ads,	                    #1
-	ΔG_ads_aplus = ΔG_ads_σ0_aplus + b_ads_aplus * σ
-	#println("ΔG_ads (at ϕ_we = $(@sprintf("%+1.2f", ϕ_we))) = $(ForwardDiff.value(ΔG_ads_aplus))")
-
-	kf[1] = 1.0e13 * exp(-max(ΔG_ads_aplus, 0.0) / (k_B * T))
-	kr[1] = 1.0e13 * exp(-max(-ΔG_ads_aplus, 0.0) / (k_B * T))
-
-	# A+_ads + e- <-> A_ads,                #2          
-	ΔG_rxn = ΔG_rxn_U0 + (ϕ_we - ϕ) * eV
-	#println("ΔG_rxn (at ϕ_we = $(@sprintf("%+1.2f", ϕ_we))) = $(ForwardDiff.value(ΔG_rxn))")
-
-	kf[2] = 1.0e13 * exp(-max(ΔG_rxn, 0.0) / (k_B * T))
-	kr[2] = 1.0e13 * exp(-max(-ΔG_rxn, 0.0) / (k_B * T))
-
-	# A_ads <-> A_aq                        #3
-	ΔG_ads_a = ΔG_ads_σ0_a + b_ads_a * σ
-
-	kf[3] = 1.0e13 * exp(-max(ΔG_ads_a, 0.0) / (k_B * T))
-	kr[3] = 1.0e13 * exp(-max(-ΔG_ads_a, 0.0) / (k_B * T))
+	function rateconstants!(k, σ, ϕ_we, ϕ)
+		(kf, kr) = k
+		
+		Δϕ = ϕ_we - ϕ
+		Gf = [
+			Gf⁰_A⁺ + Gf⁰_site  + Gf⁰_e⁻(Δϕ) 
+			Gf⁰_A⁺_ads + Gf⁰_e⁻(Δϕ)
+			Gf⁰_A_ads
+			Gf⁰_A + Gf⁰_site
+		]
+		kf[1] = k_Arr(Eₐ(Gf[2] - Gf[1]))
+		kr[1] = k_Arr(Eₐ(Gf[2] - Gf[1]))
+		kf[2] = k_Arr(Eₐ(Gf⁰_A⁺_e⁻_ads(Δϕ) - Gf[2]))
+		kr[2] = k_Arr(Eₐ(Gf[3] - Gf⁰_A⁺_e⁻_ads(Δϕ)))
+		kf[3] = k_Arr(Eₐ(Gf[4] - Gf[3]))
+		kr[3] = k_Arr(Eₐ(Gf[3] - Gf[4]))
+	end;
 end;
 
 # ╔═╡ bf7e4757-0ac3-47db-a518-68db32217800
@@ -193,12 +199,12 @@ function breactions(
 		rates[3] = kf[3] * u[ia_ads] - kr[3] * u[ia] * θ_free
 
 		# bulk species
-		f[iaplus] += -rates[1] * S
-		f[ia] += rates[3] * S
+		f[iaplus] += rates[1] * S
+		f[ia] += -rates[3] * S
 		
 		# surface species
-		f[iaplus_ads] += rates[1] - rates[2]
-		f[ia_ads] += rates[2] - rates[3]
+		f[iaplus_ads] -= rates[1] - rates[2]
+		f[ia_ads] -= rates[2] - rates[3]
 	end
 	nothing
 end;
@@ -250,6 +256,8 @@ celldata = ElectrolyteData(; nc 	= 3,
 							 eneutral = false,
 							 κ 		= bulk.κ,
 							 c_bulk = bulk.c_bulk,
+							 v 		= bulk.v,
+							 M      = bulk.M,
 							 Γ_we 	= 1,
 							 Γ_bulk = 2,
 							 scheme);
@@ -275,13 +283,18 @@ result = ivsweep(cell; voltages=vmin:vdelta:vmax, store_solutions=true, solver_c
 @bind vshow PlutoUI.Slider(range(extrema(result.voltages)...; length = 101),
                            show_value = true) # hide
 
+# ╔═╡ dffe6e2c-d04d-41d3-a919-78b4113f92dd
+md"""
+$(@bind vindex PlutoUI.Slider(1:length(result.voltages); show_value = false))
+"""
+
+# ╔═╡ 85bb0437-e94a-4794-9a74-4a4ec20bd4a3
+Markdown.parse("$(@sprintf "Voltage = %.2f" result.voltages[vindex])")
+
 # ╔═╡ d1fec937-c3fa-41a4-bfbd-f73bcc2e6015
 md"""
 ### Plotting functions
 """
-
-# ╔═╡ f53c55dd-cb8f-4bb4-91f2-3311abe1a9d3
-curr(J, ix) = [F * j[ix] for j in J]
 
 # ╔═╡ c3385ba7-357a-41bb-87d3-dc34739669c5
 function plotcurr(result)
@@ -293,15 +306,10 @@ function plotcurr(result)
                          xlabel = "Φ_WE/V",
                          ylabel = "I",
                          legend = :lt)
-    scalarplot!(vis,
+
+	scalarplot!(vis,
                 volts,
-                curr(result.j_bulk, iaplus);
-                linestyle = :dash,
-                label = "A⁺, bulk",
-                color = :red)
-    scalarplot!(vis,
-                volts,
-                curr(result.j_we, iaplus);
+                currents(result, iaplus);
                 color = :red,
                 clear = false,
                 linestyle = :solid,
@@ -309,34 +317,11 @@ function plotcurr(result)
 
     scalarplot!(vis,
                 volts,
-                curr(result.j_bulk, ia);
-                linestyle = :dash,
-                label = "A, bulk",
-                color = :green,
-                clear = false)
-    scalarplot!(vis,
-                volts,
-                curr(result.j_we, ia);
+                currents(result, ia);
                 color = :green,
                 clear = false,
                 linestyle = :solid,
                 label = "A, we")
-
-    scalarplot!(vis,
-                volts,
-                curr(result.j_bulk, ibminus);
-                linestyle = :dash,
-                label = "B⁻, bulk",
-                color = :green,
-                clear = false)
-    scalarplot!(vis,
-                volts,
-                curr(result.j_we, ibminus);
-                color = :green,
-                clear = false,
-                linestyle = :solid,
-                label = "B⁻, we")
-
     reveal(vis)
 end
 
@@ -423,8 +408,7 @@ plot1d(result, celldata)
 function cplot(cell, result)
     scale = 1.0 / (mol / dm^3)
     tsol=LiquidElectrolytes.voltages_solutions(result)
-    j_we=result.j_we
-    currs = curr(j_we, ia)
+    currs = currents(result, ia)
     vis = GridVisualizer(; resolution = (1200, 400), layout = (1, 3),
                          gridscale = 1.0e9)
     xmax = 10 * nm
@@ -476,6 +460,48 @@ end
 
 # ╔═╡ fb0530a9-9ecf-4eda-83c1-89de6ee93d0d
 cplot(cell, result)
+
+# ╔═╡ 9a9e8180-ea7b-4eff-b19f-679dabd24f09
+function θplot(cell, result)
+	(; Γ_we)= electrolytedata(cell)
+	vis 	= GridVisualizer(; size = (600, 250), legend=:lt, xlabel="Voltage [V]", ylabel="coverage")
+	θ_A⁺ 	= [view(s[iaplus_ads,:], subgrid(grid,[Γ_we], boundary=true))[1] for s in result.solutions]
+	θ_A 	= [view(s[ia_ads,:], subgrid(grid,[Γ_we], boundary=true))[1] for s in result.solutions]
+	
+	scalarplot!(vis, result.voltages, θ_A⁺, color=:red, label="θ_A⁺")
+	scalarplot!(vis, result.voltages, θ_A, clear=false, color=:blue, label="θ_A")
+	reveal(vis)
+end
+
+# ╔═╡ 3a20f5da-ec8d-4718-8d5b-e78c23cb3e29
+θplot(cell, result)
+
+# ╔═╡ 8c8f7da0-5065-44fc-8f88-c8154a72a52c
+function energyplot(result, cell, vindex)
+	(; iϕ) = electrolytedata(cell)
+	sol = voltages_solutions(result)
+	Δϕ = sol.t .- sol[iϕ, 1, :]
+	Gf = @. [
+			Gf⁰_A⁺ + Gf⁰_site  + Gf⁰_e⁻(Δϕ);; 
+			Gf⁰_A⁺_ads + Gf⁰_e⁻(Δϕ);;
+			Gf⁰_A⁺_e⁻_ads(Δϕ);;
+			Gf⁰_A_ads + 0 * Δϕ;;
+			Gf⁰_A + Gf⁰_site + 0 * Δϕ
+	] ./ eV
+	f = Figure(; resolution=(600, 600))
+	ax = Axis(f[1, 1],
+	    title = "Energy Diagram",
+	    xlabel = "Reaction Path",
+	    ylabel = "Free Energy",
+		limits = (0, 1, -2, 2)
+	)
+	hlines!(ax, Gf[vindex,:], xmin=[0.0, 0.2,0.4,0.6, 0.8], xmax=[0.2,0.4,0.6, 0.8,1])
+	text!(ax,[0.0, 0.2,0.4,0.6, 0.8].+0.02, Gf[vindex, :], text=["A⁺(aq), *, e⁻", "*A⁺(ad), e⁻", "*A⁺-e⁻(ads)", "*A(ad)", "A(aq), *"])
+	f
+end
+
+# ╔═╡ 942f8b05-a7bb-4318-a6dd-66312ca2689e
+energyplot(result, cell, vindex)
 
 # ╔═╡ 855fbd2c-5dcd-47a7-84b8-c859b3f80ba8
 TableOfContents()
@@ -562,7 +588,7 @@ VoronoiFVM = "~1.13.1"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.9.2"
+julia_version = "1.9.3"
 manifest_format = "2.0"
 project_hash = "ab262231ad66a084e7c46232d9f05ad087462f93"
 
@@ -2859,11 +2885,16 @@ version = "3.5.0+0"
 # ╠═7002cb8e-8010-4b60-a707-7537c494636f
 # ╠═dbc76012-4458-4ef2-897a-dd8e4ced4931
 # ╠═fb0530a9-9ecf-4eda-83c1-89de6ee93d0d
+# ╠═3a20f5da-ec8d-4718-8d5b-e78c23cb3e29
+# ╟─85bb0437-e94a-4794-9a74-4a4ec20bd4a3
+# ╟─dffe6e2c-d04d-41d3-a919-78b4113f92dd
+# ╠═942f8b05-a7bb-4318-a6dd-66312ca2689e
 # ╟─d1fec937-c3fa-41a4-bfbd-f73bcc2e6015
-# ╟─f53c55dd-cb8f-4bb4-91f2-3311abe1a9d3
 # ╟─c3385ba7-357a-41bb-87d3-dc34739669c5
 # ╟─0b31ab30-16f4-4c45-abe9-792fa12400b4
 # ╟─8812965c-9ab9-47c7-9ca2-7d08c8157a69
+# ╟─9a9e8180-ea7b-4eff-b19f-679dabd24f09
+# ╟─8c8f7da0-5065-44fc-8f88-c8154a72a52c
 # ╟─f1cfba83-bea2-43ae-9dc8-fd2788a4b937
 # ╟─855fbd2c-5dcd-47a7-84b8-c859b3f80ba8
 # ╟─2ca1204a-56a6-4d9a-bc8a-46145382430c
