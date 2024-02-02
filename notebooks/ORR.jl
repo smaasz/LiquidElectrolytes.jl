@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.27
+# v0.19.35
 
 using Markdown
 using InteractiveUtils
@@ -30,7 +30,7 @@ begin
     using Interpolations
     using Test
     if isdefined(Main,:PlutoRunner)
-        using CairoMakie	
+        import CairoMakie	
    	default_plotter!(CairoMakie)
  	CairoMakie.activate!(type="svg")
     end
@@ -303,6 +303,45 @@ function plot1d(result,celldata, vshow)
                          limits = (1.0e-6, 100),
                          legend = :rt)
     
+   
+            sol = tsol(vshow)
+            c0 = solventconcentration(sol, celldata)
+            scale = 1.0 / (mol / dm^3)
+	    ishow=vinter(vshow)
+            title = "Φ_we=$(round(vshow,digits=4)), I=$(round(vinter(vshow),sigdigits=4))"
+	#    title = @sprintf("Φ_we=%+1.2f I=%+1.4f",vshow,ishow)
+            
+            scalarplot!(vis, grid, sol[io2, :] * scale; color = :green, label = "O_2",title)
+            scalarplot!(vis,
+                        grid,
+                        sol[iso4, :] * scale;
+                        color = :gray,
+                        clear = false,
+                        label = "SO4--")
+            scalarplot!(vis,
+                        grid,
+                        sol[ihplus, :] * scale;
+                        color = :red,
+                        clear = false,
+                        label = "H+")
+            scalarplot!(vis, grid, c0 * scale; color = :blue, clear = false,
+                        label = "H2O")
+	    reveal(vis)
+        isdefined(Main,:PlutoRunner) && save("orr.png",vis)
+    
+     reveal(vis)
+end
+
+# ╔═╡ cc80544f-ca62-49fb-b907-4bd194b11ee5
+function plot1d(result,celldata)
+    vinter = linear_interpolation(result.voltages, [j[io2] for j in result.j_we])
+    tsol=LiquidElectrolytes.voltages_solutions(result)
+    vis = GridVisualizer(;
+                         size = (600, 250),
+                         yscale = :log,
+                         limits = (1.0e-6, 100),
+                         legend = :rt)
+    
     video="orr.gif"
     vrange=range(extrema(result.voltages)...; length = 101)
     
@@ -338,6 +377,9 @@ end
 
 # ╔═╡ 56eb52b1-9017-4485-83d6-b7ef15ad522f
 plot1d(result, celldata, vshow)
+
+# ╔═╡ 3f639537-21e9-4dc0-8eeb-59e7d28afee1
+plot1d(result, celldata)
 
 # ╔═╡ 1ac7646a-76ae-4e8f-9d9d-ecaccc262857
 function cplot(cell, result)
@@ -539,7 +581,7 @@ VoronoiFVM = "~1.13.1"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.0-beta1"
+julia_version = "1.9.4"
 manifest_format = "2.0"
 project_hash = "bd1709f7c5439c06ceaca81d40a1307b1ac81a97"
 
@@ -1536,7 +1578,7 @@ version = "0.6.4"
 [[deps.LibCURL_jll]]
 deps = ["Artifacts", "LibSSH2_jll", "Libdl", "MbedTLS_jll", "Zlib_jll", "nghttp2_jll"]
 uuid = "deac9b47-8bc7-5906-a0fe-35ac56dc84c0"
-version = "8.0.1+0"
+version = "8.4.0+0"
 
 [[deps.LibGit2]]
 deps = ["Base64", "NetworkOptions", "Printf", "SHA"]
@@ -1545,7 +1587,7 @@ uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
 [[deps.LibSSH2_jll]]
 deps = ["Artifacts", "Libdl", "MbedTLS_jll"]
 uuid = "29816b5a-b9ab-546f-933c-edad1886dfa8"
-version = "1.10.2+0"
+version = "1.11.0+1"
 
 [[deps.Libdl]]
 uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
@@ -1757,7 +1799,7 @@ version = "0.3.4"
 
 [[deps.MozillaCACerts_jll]]
 uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
-version = "2023.1.10"
+version = "2022.10.11"
 
 [[deps.Multisets]]
 git-tree-sha1 = "8d852646862c96e226367ad10c8af56099b4047e"
@@ -1824,7 +1866,7 @@ version = "1.3.5+1"
 [[deps.OpenBLAS_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
 uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
-version = "0.3.23+0"
+version = "0.3.21+4"
 
 [[deps.OpenEXR]]
 deps = ["Colors", "FileIO", "OpenEXR_jll"]
@@ -1940,7 +1982,7 @@ version = "0.42.2+0"
 [[deps.Pkg]]
 deps = ["Artifacts", "Dates", "Downloads", "FileWatching", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
-version = "1.10.0"
+version = "1.9.2"
 
 [[deps.PkgVersion]]
 deps = ["Pkg"]
@@ -2058,7 +2100,7 @@ deps = ["InteractiveUtils", "Markdown", "Sockets", "Unicode"]
 uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 
 [[deps.Random]]
-deps = ["SHA"]
+deps = ["SHA", "Serialization"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [[deps.RandomExtensions]]
@@ -2313,7 +2355,6 @@ version = "1.1.1"
 [[deps.SparseArrays]]
 deps = ["Libdl", "LinearAlgebra", "Random", "Serialization", "SuiteSparse_jll"]
 uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
-version = "1.10.0"
 
 [[deps.SparseDiffTools]]
 deps = ["ADTypes", "Adapt", "ArrayInterface", "Compat", "DataStructures", "FiniteDiff", "ForwardDiff", "Graphs", "LinearAlgebra", "Reexport", "Requires", "SciMLOperators", "Setfield", "SparseArrays", "StaticArrayInterface", "StaticArrays", "Tricks", "VertexSafeGraphs"]
@@ -2437,7 +2478,7 @@ uuid = "4607b0f0-06f3-5cda-b6b1-a6196a1729e9"
 [[deps.SuiteSparse_jll]]
 deps = ["Artifacts", "Libdl", "Pkg", "libblastrampoline_jll"]
 uuid = "bea87d4a-7f5b-5778-9afe-8cc45184846c"
-version = "7.2.0+0"
+version = "5.10.1+6"
 
 [[deps.SymbolicIndexingInterface]]
 deps = ["DocStringExtensions"]
@@ -2739,7 +2780,7 @@ version = "1.3.7+1"
 [[deps.nghttp2_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850ede-7688-5339-a07c-302acd2aaf8d"
-version = "1.52.0+0"
+version = "1.52.0+1"
 
 [[deps.p7zip_jll]]
 deps = ["Artifacts", "Libdl"]
@@ -2786,12 +2827,14 @@ version = "3.5.0+0"
 # ╟─7891a252-8fdf-40df-a205-64ca4078a542
 # ╠═d7b10140-7db7-4be0-88c3-53ba1f203310
 # ╠═56eb52b1-9017-4485-83d6-b7ef15ad522f
+# ╠═3f639537-21e9-4dc0-8eeb-59e7d28afee1
 # ╟─556c47ee-e172-483b-b922-a6422a0c405f
 # ╟─300ed474-76c5-47e9-b15a-8c4c93082268
 # ╟─f1857d7d-cec5-42a5-88d6-1d1f620f894c
 # ╟─5bc4f11f-24c6-4af8-a554-1b5771f1f2b0
 # ╟─b81676e8-dcec-49fd-b350-f26ac61243ec
 # ╠═9226027b-725d-446e-bc14-dd335a60ec09
+# ╠═cc80544f-ca62-49fb-b907-4bd194b11ee5
 # ╟─1ac7646a-76ae-4e8f-9d9d-ecaccc262857
 # ╟─1317a982-c416-4d44-804a-8694cc2bbef2
 # ╠═950f43ba-6555-463a-bed7-36511e17e882

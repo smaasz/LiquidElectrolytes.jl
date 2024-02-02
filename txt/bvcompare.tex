@@ -76,12 +76,13 @@ see table \ref{tab:notations}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Nernst-Planck-Poisson  with  volume constraints} 
+Let $m_i=\frac{M_i+\kappa_i M_0}{M_0}=\frac{M_i}{M_0}+\kappa_i$.
 
 \begin{subequations}\label{sys:PNP}
 \begin{align}
   -\nabla \varepsilon \nabla \phi&= q\\
-  \partial c_i  + \nabla \cdot \mathbf N_i  &=0 & (i=1\dots N)\\
-  \mathbf N_i &= - \frac{D_i}{RT} c_i \left( \nabla \mu_i - \frac{M_i}{M_0}\nabla \mu_0 + z_i F \nabla \phi \right)& (i=1\dots N) \label{eq:NP}
+  \partial_t c_i  + \nabla \cdot \mathbf N_i  &=0 & (i=1\dots N)\\
+  \mathbf N_i &= - \frac{D_i}{RT} c_i \left( \nabla \mu_i -m_i\nabla \mu_0 + z_i F \nabla \phi \right)& (i=1\dots N) \label{eq:NP}
 \end{align}
 where $q=F\sum_{i=1}^N z_i c_i$.
 From the momentum balance at zero barycentric velocity, the pressure $p$ obeys the relationship $\nabla p = q \nabla \phi$
@@ -107,18 +108,16 @@ $c_1\dots c_N$:
   \label{eq:c0}
   c_0&=\frac{1}{v_0} -  \sum_{i=1}^N  \frac{\bar v_i}{v_0}c_i
 \end{align}
-The diffusive mass fluxes are defined relative to the barycentric velocity \cite{dreyer2013overcoming,Fuhrmann2015}
+The diffusive mass fluxes are defined relative to the barycentric velocity \cite{dreyer2013overcoming,Fuhrmann2015} which is assumed to be zero:
 \begin{align}
   \sum_{i=0}^N M_i\mathbf N_i&=0
 \end{align}
 
 
 
-
 For the derivation of the numerical scheme we calculate the non-constant
-contribution to the excess chemical potential. 
-defined as the difference between the chemical potential $\mu^{ex}_i$.
-contribution to the driving force $\mu_i - \frac{M_i}{M_0}\mu_0$ and the term
+contribution to the excess chemical potential  $\mu^{ex}_i$ defined as
+the difference between $\mu_i - m_i\mu_0$ and the term
 $RT \log c_i$ in order to be able to rewrite the the flux as
 
 \begin{align}
@@ -128,10 +127,10 @@ $RT \log c_i$ in order to be able to rewrite the the flux as
 
 For $i=1\dots N$ we have
 \begin{align}
-  \mu_i^{ex} &= \mu_i - \frac{M_i}{M_0} \mu_0  - RT \log c_i\nonumber\\
-             &= \bar v_ip +  RT \log \frac{c_i}{\bar c}  -\frac{M_i}{M_0}\left(  v_0p + RT \log \frac{c_0}{\bar c}\right)  - RT \log c_i  \nonumber\\
-            &= \bar v_ip - RT\log \bar c - \frac{M_i}{M_0}\left(v_0p + RT \log \frac{c_0}{\bar c}\right)\nonumber\\
-            &= \left(\bar v_i-\frac{M_i}{M_0}v_0\right)p - \frac{M_i}{M_0}RT\log \frac{c_0}{\bar c} - RT\log \bar c \label{eq:muex}
+  \mu_i^{ex} &= \mu_i -m_i \mu_0  - RT \log c_i\nonumber\\
+             &= \bar v_ip +  RT \log \frac{c_i}{\bar c}  -m_i\left(  v_0p + RT \log \frac{c_0}{\bar c}\right)  - RT \log c_i  \nonumber\\
+            &= \bar v_ip - RT\log \bar c -m_i\left(v_0p + RT \log \frac{c_0}{\bar c}\right)\nonumber\\
+            &= \left(\bar v_i-m_iv_0\right)p -m_iRT\log \frac{c_0}{\bar c} - RT\log \bar c \label{eq:muex}
 \end{align}
 and express $c_0$ via \eqref{eq:c0} and $\bar c$ in terms of $c_1\dots c_N$
 \begin{align*}
@@ -143,14 +142,22 @@ The excess chemical potential is linked to the \textit{activity coefficient} $\g
 \cite{Fuhrmann2015}
 \begin{align*}
   \gamma_i&=\exp(-\frac{\mu_i^{ex}}{RT})\\
-         &= \frac{1}{\bar c}\exp\left(\frac{\bar v_i-\frac{M_i}{M_0}v_0}{RT}p\right)\left(\frac{\bar c}{c_0}\right)^{\frac{M_i}{M_0}}
+         &= \frac{1}{\bar c}\exp\left(\frac{\bar v_i-m_iv_0}{RT}p\right)\left(\frac{\bar c}{c_0}\right)^{m_i}
 \end{align*}
-
-
-
 
 These data allow to define various numerical flux approximations in the context of the Voronoi finite volume
 method \cite{Fuhrmann2015,GaudeulFuhrmannNM2022}.
+
+There are some noteworthy special cases.
+
+\subsubsection{Original Bikerman Freise model}
+Set $v_i=v_0$, $M_i=M_0$, $\kappa_i=0$. Thus $m_i=1$, $\bar v_i=v_i$, $\bar v_i -m_i v_0=0$.
+As a consequence, $\mu_i^{ex} = -RT\log c_0$, and notably it is independent of $p$.
+Also, $\bar c=\frac{1}{v_0}$ and $c_0=\frac{1}{v_0} - \sum c_i$.
+
+
+\subsubsection{Bikerman Freise with different molar volumes}
+Set $\kappa_i=0$, $M_i= \frac{v_i}{v_0} M_0$. Thus $\bar v_i -m_i v_0=0$
 
 
 \subsection{Equilibrium problem}
@@ -162,8 +169,8 @@ Zero flux gives
 \begin{align}
   \mu_i   &=   - \mu_i^{ex} - z_i F \nabla \phi\\
   c_i   &=  C_i\exp\left( -\frac{\mu_i^{ex} + z_i F \nabla \phi}{RT}\right)\\
-        &=  C_i \exp\left(-\frac{\left(\bar v_i-\frac{M_i}{M_0}v_0\right)p - \frac{M_i}{M_0}RT\log \frac{c_0}{\bar c} + z_i F \nabla \phi}{RT}\right)
-        &=  C_i \exp\left(-\frac{\left(\bar v_i-\frac{M_i}{M_0}v_0\right)p - \frac{M_i}{M_0}RT\log \frac{c_0}{\bar c} + z_i F \nabla \phi}{RT}\right)
+        &=  C_i \exp\left(-\frac{\left(\bar v_i-\frac{M_i}{M_0}v_0\right)p -m_iRT\log \frac{c_0}{\bar c} + z_i F \nabla \phi}{RT}\right)
+        &=  C_i \exp\left(-\frac{\left(\bar v_i-\frac{M_i}{M_0}v_0\right)p -m_iRT\log \frac{c_0}{\bar c} + z_i F \nabla \phi}{RT}\right)
 \end{align}
 
 
@@ -194,7 +201,7 @@ Zero flux gives
 \subsection{Flux discretization}
 We intend to use the Sedan scheme wich is based on a reformulation of the equations:
 \begin{align*}
-  \mathbf N_i &= - \frac{D_i}{RT} c_i \left( \nabla \mu_i - \frac{M_i}{M_0}\nabla \mu_0 + z_i F \nabla \phi \right)& (i=1\dots N) \label{eq:NP}
+  \mathbf N_i &= - \frac{D_i}{RT} c_i \left( \nabla \mu_i -m_i\nabla \mu_0 + z_i F \nabla \phi \right)& (i=1\dots N) \label{eq:NP}
 \end{align*}
 
 

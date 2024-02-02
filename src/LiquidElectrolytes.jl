@@ -6,7 +6,6 @@ using StaticArrays
 using LinearAlgebra
 using NLsolve
 using LessUnitful
-using RecursiveArrayTools
 using Base: @kwdef
 
 function __init__()
