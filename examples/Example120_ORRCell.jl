@@ -1,8 +1,14 @@
 #=
 # ORR Half cell
-([source code](SOURCE_URL))
+
+([source code](@__SOURCE_URL__))
 
 I-V sweep for Oxygen Reduction
+
+![](Example120_ORRCell_1.svg)
+
+![](Example120_ORRCell_2.svg)
+
 
 Methods called:
 - [`ElectrolyteData`](@@ref)
@@ -237,24 +243,19 @@ function main(;
     reveal(vis)
 end
 
+function generateplots(dir; Plotter = nothing, kwargs...)    #hide
+    if ismakie(Plotter)                                      #hide
+        Plotter.activate!(; type = "svg", visible = false)   #hide
+        p=main(;Plotter)                                     #hide
+        Plotter.save(joinpath(dir, "Example120_ORRCell_1.svg"), p)  #hide
+        p=main(;compare=true,Plotter)     #hide
+        Plotter.save(joinpath(dir, "Example120_ORRCell_2.svg"), p)  #hide
+    end                                                      #hide
+    nothing                                                  #hide
+end                                                          #hide
+
 end
 
 
-#=
-```@example Example120_ORRCell_1
-using Example120_ORRCell,CairoMakie #hide
-CairoMakie.activate!(type="svg",visible=false) # hide
-Example120_ORRCell.main(Plotter=CairoMakie)
-```
-=#
 
-
-
-#=
-```@example Example120_ORRCell_2
-using Example120_ORRCell,CairoMakie #hide
-CairoMakie.activate!(type="svg",visible=false) # hide
-Example120_ORRCell.main(compare=true,Plotter=CairoMakie)
-```
-=#
 

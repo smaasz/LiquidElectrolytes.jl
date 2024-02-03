@@ -6,6 +6,11 @@ using VoronoiFVM
 using LessUnitful
 using Pluto
 using UUIDs
+using ExampleJuggler
+ExampleJuggler.verbose!(true)
+
+
+
 
 @phconstants N_A
 @unitfactors dm nm mol
@@ -115,25 +120,10 @@ notebooks=[ "DLCap.jl",
             "Equilibrium1D.jl",
             "PoissonBoltzmann.jl",
             "SurfaceKinetics_draft.jl",
-            "BufferReactions.jl"]
+            "BufferReactions.jl"
+            ]
 
-function test_as_script(notebookname;verbose=false)
-    nbb=basename(notebookname)
-    @info "run notebook $(nbb) as script..."
-    modname="mod"*string(uuid1())[1:8]
-    notebook="module $(modname)\n\n"
-    notebook*=read(notebookname,String)
-    notebook*="\nend"
-    t=@elapsed begin
-        @testset "$notebookname" begin
-            eval(Meta.parse(notebook))
-        end
-    end
-    @info "$(nbb) executed in $(round(t,sigdigits=4)) seconds"
+@testset "Notebooks" begin
+    @testscripts(joinpath(@__DIR__, "..", "notebooks"), notebooks)
 end
 
-@testset "notebooks" begin
-    for notebook in notebooks
-        test_as_script(joinpath(@__DIR__,"..","notebooks",notebook))
-    end
-end

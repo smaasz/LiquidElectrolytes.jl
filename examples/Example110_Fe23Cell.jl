@@ -1,8 +1,13 @@
 #=
 # Fe redox half cell
-([source code](SOURCE_URL))
+
+([source code](@__SOURCE_URL__))
 
 I-V sweep for ``Fe^{2+} \to Fe^{2+} + e^-``
+
+![](Example110_Fe23Cell_1.svg)
+![](Example110_Fe23Cell_2.svg)
+![](Example110_Fe23Cell_3.svg)
 
 Methods called:
 - [`ElectrolyteData`](@@ref)
@@ -252,30 +257,17 @@ function main(;
     reveal(vis)
 end
 
+function generateplots(dir; Plotter = nothing, kwargs...)    #hide
+    if ismakie(Plotter)                                      #hide
+        Plotter.activate!(; type = "svg", visible = false)   #hide
+        p=main(;Plotter)                                     #hide
+        Plotter.save(joinpath(dir, "Example110_Fe23Cell_1.svg"), p)  #hide
+        p=main(;compare=true,Plotter,voltages=-1:0.025:1)     #hide
+        Plotter.save(joinpath(dir, "Example110_Fe23Cell_2.svg"), p)  #hide
+        p=main(;compare=true,Plotter,voltages=-0.2:0.025:0.2) # hide
+        Plotter.save(joinpath(dir, "Example110_Fe23Cell_3.svg"), p)  #hide
+    end                                                      #hide
+    nothing                                                  #hide
+end                                                          #hide
+
 end
-
-#=
-```@example Example110_Fe23Cell_1
-using Example110_Fe23Cell,CairoMakie # hide
-CairoMakie.activate!(type="svg",visible=false) # hide
-Example110_Fe23Cell.main(Plotter=CairoMakie)
-```
-=#
-
-
-
-#=
-```@example Example110_Fe23Cell_2
-using Example110_Fe23Cell,CairoMakie # hide
-CairoMakie.activate!(type="svg",visible=false) # hide
-Example110_Fe23Cell.main(compare=true,Plotter=CairoMakie,voltages=-1:0.025:1)
-```
-=#
-
-#=
-```@example Example110_Fe23Cell_3
-using Example110_Fe23Cell,CairoMakie # hide
-CairoMakie.activate!(type="svg",visible=false) # hide
-Example110_Fe23Cell.main(compare=true,Plotter=CairoMakie,voltages=-0.2:0.025:0.2)
-```
-=#

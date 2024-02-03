@@ -1,8 +1,12 @@
 #=
+
 # Double Layer Capacitance
-([source code](SOURCE_URL))
+
+([source code](@__SOURCE_URL__))
 
 Calculation of double layer capacitance of a symmetric 1:1 electrolyte.
+
+![](Example101_DLCap.svg)
 
 Methods called:
 - [`ElectrolyteData`](@@ref)
@@ -93,13 +97,12 @@ function main(;voltages=-2:0.01:2,           ## Voltages/V
     reveal(vis)
 end
 
+function generateplots(dir; Plotter = nothing, kwargs...)    #hide
+    if ismakie(Plotter)                                      #hide
+        Plotter.activate!(; type = "svg", visible = false)   #hide
+        p=main(;Plotter)                                     #hide
+        Plotter.save(joinpath(dir, "Example101_DLCap.svg"), p)  #hide
+    end                                                      #hide
+    nothing                                                  #hide
+end                                                          #hide
 end 
-
-#=
-```@example Example101_DLCap
-using Example101_DLCap, CairoMakie # hide
-CairoMakie.activate!(type="svg",visible=false) # hide
-Example101_DLCap.main(Plotter=CairoMakie)
-```
-=#
-
