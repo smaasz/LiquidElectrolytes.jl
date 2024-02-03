@@ -4,7 +4,7 @@ push!(LOAD_PATH,joinpath(@__DIR__,"..","examples"))
 using Documenter, ExampleJuggler, CairoMakie, LiquidElectrolytes
 ExampleJuggler.verbose!(true)
 
-function make(;with_notebooks=true, with_examples=false)
+function make(;with_notebooks=true, with_examples=true)
     
     pages=Any[
         "Home"=>"index.md",
@@ -60,7 +60,10 @@ function make(;with_notebooks=true, with_examples=false)
 
 end
 
-make()
-
+if isinteractive()
+    make(;with_notebooks=false, with_examples=false)
+else
+    make()
+end
 
 
