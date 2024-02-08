@@ -17,8 +17,10 @@ end
 Finite volume boundary storage term
 """
 function pnpbstorage(f, u, node, electrolyte)
-    for ia = (electrolyte.nc + 1):(electrolyte.nc + electrolyte.na)
-        f[ia] = u[ia]
+    if node.region == electrolyte.Γ_we
+        for ia = (electrolyte.nc + 1):(electrolyte.nc + electrolyte.na)
+            f[ia] = u[ia]
+        end
     end
 end
 
@@ -204,6 +206,7 @@ function PNPSystem(grid; celldata = ElectrolyteData(), bcondition = default_bcon
                             flux = pnpflux,
                             reaction = _pnpreaction,
                             storage = pnpstorage,
+                            bstorage = pnpbstorage,
                             bcondition,
                             species = [1:(celldata.nc)..., celldata.iϕ, celldata.ip],
                             kwargs...)
@@ -233,7 +236,7 @@ function pnpunknowns(sys)
         @views u[ic, :] .= c_bulk[ic]
     end
     for ia = (nc + 1):(nc + na)
-        @views u[ia, :] .= 0
+        @views u[ia, :] .= 0.0
     end
     u
 end
