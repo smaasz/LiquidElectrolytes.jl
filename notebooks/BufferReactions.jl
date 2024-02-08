@@ -36,6 +36,352 @@ begin
     end
 end
 
+# ╔═╡ b263c6bf-3606-4c3d-9fe1-5d074b294519
+pkgdir(LiquidElectrolytes)
+
+# ╔═╡ e8de40fe-472e-437f-92c8-5f75f5d58601
+begin
+	@unitfactors mol dm eV μA μF cm μm K V m s Å
+	@phconstants c_0 N_A e k_B
+	F = N_A * e
+end;
+
+# ╔═╡ 2a787207-55ab-4e5b-a9f2-22261ee28a42
+begin
+	const pH 		= 6.8
+	const T 		= (273.15 + 25) * K
+	const C_gap 	= 20 * μF/cm^2
+    const ϕ_pzc 	= 0.16 * V
+	const scheme 	= :μex
+	const vmin 		= -1.5 * V
+	const vmax 		=  0.0 * V
+	const vdelta    = 0.1 * V
+	const nref 		= 0
+	const M0 		= 18.0153 * ufac"g/mol"
+	const v0        = N_A * (8.2 * Å)^3 #1 / (55.4 * ufac"M") #  
+	const aH₂O 		= 1.0 #* mol/dm^3
+
+	const ikplus      = 1
+    const ihco3       = 2
+    const ico3        = 3
+    const ico2        = 4
+    const ico         = 5
+    const iohminus    = 6
+    const ihplus      = 7
+	const nc 		  = 7
+
+	const species_dict = Dict(
+		"K⁺" => ikplus,
+		"HCO₃⁻" => ihco3,
+		"CO₃²⁻" => ico3,
+		"CO₂" => ico2,
+		"OH⁻" => iohminus, 
+		"H⁺" => ihplus,
+		"CO" => ico,
+	)
+
+	## reaction rate constants for bulk reactions
+	### CO2 + OH- <=> HCO3-
+	const kbe1 = 4.44e7 / (mol/dm^3)
+	const kbf1 = 5.93e3 / (mol/dm^3) / s
+	const kbr1 = kbf1 / kbe1
+	### HCO3- + OH- <=> CO3-- + H2O
+	const kbe2 = 4.66e3 / (mol/dm^3)
+	const kbf2 = 1.0e8 / (mol/dm^3) / s
+	const kbr2 = kbf2 / kbe2
+	### CO2 + H20 <=> HCO3- + H+
+    const kae1 = 4.44e-7 * (mol/dm^3)
+    const kaf1 = 3.7e-2 / s
+    const kar1 = kaf1 / kae1
+    ### HCO3- <=> CO3-- + H+ 
+    const kae2 = 4.66e-5 / (mol/dm^3)
+    const kaf2 = 59.44e3 / (mol/dm^3) / s
+    const kar2 = kaf2 / kae2
+	### autoprotolyse
+    const kwe  = 1.0e-14 * (mol/dm^3)^2
+    const kwf  = 2.4e-5 * (mol/dm^3) / s
+    const kwr  = kwf / kwe
+end;
+
+# ╔═╡ de92f8fa-2abe-4dec-b2f7-20e2fbbb906f
+begin
+	using DelimitedFiles
+	table = readdlm("/home/steffen/Documents/masterarbeit/ringe_concentrations_digitized_2.csv", ',', Float64, '\n', skipstart=2)
+	df = Dict(
+		ikplus => (table[table[:,1].>0.0,1], table[table[:,1].>0.0, 2]),
+		ihco3  => (table[table[:,7].>0.0,7], table[table[:,7].>0.0, 8]),
+        ico3   => (table[table[:,13].>0.0,13], table[table[:,13].>0.0, 14]),
+    	ico2   => (table[table[:,3].>0.0,3], table[table[:,3].>0.0, 4]),
+    	ico    => (table[table[:,5].>0.0,5], table[table[:,5].>0.0, 6]),
+    	iohminus => (table[table[:,11].>0.0,11], table[table[:,11].>0.0, 12]),
+    	ihplus  => (table[table[:,9].>0.0,9], table[table[:,9].>0.0, 10]),
+	)
+end
+
+# ╔═╡ 960fe09f-8bfe-4773-a57e-cbd7774050ce
+# ╠═╡ disabled = true
+#=╠═╡
+const bulk = DataFrame(
+  :name => [      "K⁺", "HCO₃⁻", "CO₃²⁻",  "CO₂",   "CO",     "OH⁻",    "H⁺"],
+  :z 	=> [         1,      -1,      -2,      0,      0,        -1,       1],
+  :D 	=> [  1.957e-9,1.185e-9,0.923e-9,1.91e-9,2.23e-9,  5.273e-9,9.310e-9] * m^2/s,
+  :κ    => [       8.0,     4.0,     4.0,    4.0,    4.0,       4.0,     4.0],
+  :c_bulk=>[0.09105350460641519,0.091,2.68e-5,0.033,0.0,10^(pH-14),10^(-pH)]*mol/dm^3
+)
+  ╠═╡ =#
+
+# ╔═╡ d2e89d2f-8738-4767-9b3d-3c311c727f1d
+begin
+	@kwdef struct BulkSpecies
+		name::String 
+		z::Int
+		D::Float64
+		c_bulk::Union{Nothing, Float64}
+		κ::Float64
+		a::Float64
+		v::Float64
+		M::Float64
+		color::Symbol
+	end
+	function BulkSpecies(;name, z, c_bulk=nothing, D, κ=0.0, a=8.2, color)
+		D *= m^2/s
+		c_bulk = isnothing(c_bulk) ? nothing : c_bulk * mol/dm^3
+		a *= Å
+		v = N_A * a^3
+		M = M0 * v
+		BulkSpecies(name, z, D, c_bulk, κ, a, v, M, color)
+	end
+	function make_eneutral(bulk_species::Vector{BulkSpecies}
+						  ;name, z, D, κ=0.0, a=8.2, v=N_A*(a*Å)^3, M=M0*v, color)
+		a *= Å
+		c_bulk = -mapreduce(x -> x.c_bulk * x.z, +, bulk_species)/z
+		BulkSpecies(name, z, D, c_bulk, κ, a, v, M, color)
+	end
+	function create_markdown(bulk::Vector{BulkSpecies})
+		table = """
+| Name | z | D | c_bulk | a | v | M | κ | color |
+|------|---|---|--------|---|---|---|---|-------|
+"""
+		for sp in bulk
+			(; name, z, D, c_bulk, a, v, M, κ, color) = sp
+			table *= @sprintf("| %s | %i | %1.3e | %1.3e | %1.3e | %1.3e | %1.3e | %1.2f | %s |\n", name, z, D, c_bulk, a, v, M, κ, color) 
+		end
+		Markdown.parse(table)
+	end
+end;
+
+# ╔═╡ f79bc999-369c-4199-8c9d-1f7d659c87dd
+begin
+	const bulk = let 
+		bulk = [
+		BulkSpecies(;name="HCO₃⁻",z=-1, D=1.185e-9, c_bulk=0.091, color=:brown),
+		BulkSpecies(;name="CO₃²⁻",z=-2,D=0.923e-9,c_bulk=2.68e-5,color=:violet),
+		BulkSpecies(;name="CO₂", z=0, D=1.91e-9, c_bulk=0.033, color=:red),
+		BulkSpecies(;name="OH⁻",z=-1,D=5.273e-9,c_bulk=10^(pH-14),color=:green),
+		BulkSpecies(;name="H⁺", z=1, D=9.310e-9, c_bulk=10^(-pH), color=:gray),
+		BulkSpecies(;name="CO", z=0, D=2.23e-9, c_bulk=0.001, color=:blue)
+		]
+		push!(bulk, make_eneutral(bulk;name="K⁺",z=1, D=1.957e-9, color=:orange))
+		sort(bulk, by=x->species_dict[x.name])
+	end
+	create_markdown(bulk)
+end
+
+# ╔═╡ 12c99cb0-8a3a-49f5-b49b-92e8e6d63507
+function reaction(f, u::VoronoiFVM.NodeUnknowns{Tv, Tc, Tp, Ti}, node, data) where {Tv, Tc, Tp, Ti}  
+	(; v) = data
+
+	# activity coefficients
+	γ = zeros(Tv, nc)
+	γ .= 1.0/(1-v[ikplus]*u[ikplus]/(mol/dm^3))
+
+	# activities
+	a = γ .* u[1:nc]
+	
+	# buffer reactions
+	rates       = zeros(Tv, 5)
+	## in base
+	## CO2 + OH- <=> HCO3-
+	rates[1]    = kbf1 * a[ico2] * a[iohminus]  - kbr1 * a[ihco3]  
+	## HCO3- + OH- <=> CO3-- + H2O
+	rates[2]    = kbf2 * a[ihco3] * a[iohminus] - kbr2 * a[ico3]
+
+	## in acid
+	## CO2 + H20 <=> HCO3- + H+
+	rates[3]    = kaf1 * a[ico2] - kar1 * a[ihco3] * a[ihplus]  
+	## HCO3- <=> CO3-- + H+ 
+	rates[4]    = kaf2 * a[ihco3] - kar2 * a[ico3] * a[ihplus]  
+
+	## autoprotolyse
+	rates[5]    = kwf * aH₂O - kwr * a[ihplus] * a[iohminus]  
+
+	f[ihco3]    -= rates[1] - rates[2] + rates[3] - rates[4]
+	f[ico3]     -= rates[2] + rates[4]
+	f[ihplus]   -= rates[3] + rates[4] + rates[5]
+	f[iohminus] -= -rates[1] -rates[2] + rates[5]
+
+	nothing
+end;
+
+# ╔═╡ d45fa649-12b0-47cf-ae9c-a2baed705d8b
+function halfcellbc(f,u, bnode,data)
+	(; Γ_we, Γ_bulk, ϕ_we, iϕ,) = data
+
+	bulkbcondition(f, u, bnode, data; region = Γ_bulk)
+	#boundary_dirichlet!(f, u, bnode; species = iϕ, region = Γ_we, value = ϕ_we)
+
+	# Robin b.c. for the Poisson equation
+	boundary_robin!(f, u, bnode, iϕ, Γ_we , C_gap, C_gap * (ϕ_we - ϕ_pzc))
+	
+	nothing
+end;
+
+# ╔═╡ 704b905e-b456-4230-b9f7-573aad7660c8
+solver_control = (max_round = 4,
+                  tol_round = 1.0e-8,
+                  reltol 	= 1.0e-8,
+                  abstol 	= 1.0e-9,
+                  verbose 	= "",
+                  maxiters 	= 20);
+
+# ╔═╡ 115ead90-3694-4493-b1af-974965cba5db
+grid = let
+	hmin    = 1.0e-6 * μm * 2.0^(-nref)
+    hmax    = 1.0 * μm * 2.0^(-nref)
+    L       = 80.0 * μm
+    X       = geomspace(0, L, hmin, hmax)
+    simplexgrid(X)
+end
+
+# ╔═╡ e0f7b4c5-537e-474f-bb3b-3abd765dfdc8
+celldata = ElectrolyteData(; nc 	= nc,
+							 na 	= 0,
+							 z 		= getproperty.(bulk, :z),
+							 D 		= getproperty.(bulk, :D),
+							 T 		= T,
+							 eneutral = false,
+							 v0 	= v0,
+							 v     	= getproperty.(bulk, :v),
+							 M0 	= M0,
+							 M     	= getproperty.(bulk, :M),
+							 κ 		= getproperty.(bulk, :κ),
+							 c_bulk = getproperty.(bulk, :c_bulk),
+							 Γ_we 	= 1,
+							 Γ_bulk = 2,
+							 scheme);
+
+# ╔═╡ eff87b3e-0bc4-440f-93c9-9bd06e285a2e
+@test isincompressible(celldata.c_bulk, celldata)
+
+# ╔═╡ 4e31f737-1dc2-4505-8a1c-9ac523c220f3
+@test iselectroneutral(celldata.c_bulk, celldata)
+
+# ╔═╡ 5a7d3d0f-d337-44d2-b283-5b760bd3d14b
+ cell = PNPSystem(grid; bcondition=halfcellbc, reaction=reaction, celldata)
+
+# ╔═╡ 40a4a273-e60c-40e8-8594-e041a95dcf5e
+result = ivsweep(cell; voltages=vmin:vdelta:vmax, store_solutions=true, solver_control...)
+
+# ╔═╡ f73f98b6-2e0c-45a6-ab3c-611fa45c2d13
+(~, default_index) = findmin(abs, result.voltages .+ 0.9 * ufac"V");
+
+# ╔═╡ 9636ac24-d78c-4f2b-b50b-eaa8313bca2a
+md"""
+Plot only the pH-value: $(@bind useonly_pH PlutoUI.CheckBox(default=false))
+"""
+
+# ╔═╡ bf4d2747-0b36-41b5-a779-179f1897a4c6
+begin
+	using Interpolations
+	function addplot(vis, sol, vshow; df=nothing)
+		species = getproperty.(bulk, :name)
+		colors = getproperty.(bulk, :color)
+		
+		scale = 1.0 / (mol / dm^3)
+	    title = @sprintf("Φ_we=%+1.2f", vshow)
+	
+		if useonly_pH
+			scalarplot!(vis, 
+					    grid.components[XCoordinates] .+ 1.0e-14, 
+					    log10.(sol[ihplus, :] * scale), 
+					    color = colors[7],
+					    label = species[7],
+					    clear = true,
+						title = title)
+		else
+			scalarplot!(vis, 
+						grid.components[XCoordinates] .+ 1.0e-14, 
+						log10.(sol[1, :] * scale), 
+						color = colors[1],
+						label = species[1],
+						clear = true,
+						title = title)
+			for ia = 2:nc			
+				scalarplot!(vis, 
+						    grid.components[XCoordinates] .+ 1.0e-14, 
+						    log10.(sol[ia, :] * scale), 
+						    color = colors[ia],
+						    label = species[ia],
+						    clear = false,)
+			end
+			if !isnothing(df)
+				for ia in 1:nc
+					X,Y= df[ia]
+					I = sortperm(X)
+					X .= X[I]
+					Y .= Y[I]
+
+					func = linear_interpolation(X, Y, extrapolation_bc=Line())
+					scalarplot!(
+						vis,
+						grid.components[XCoordinates] .+ 1.0e-14,
+						x->log10(func(x)),
+						color = colors[ia],
+						linestyle = :dash,
+						clear=false,
+						label=""
+					)
+				end
+			end
+		end
+	end
+
+	function plot1d(result, celldata, vshow, df)
+		tsol 	= LiquidElectrolytes.voltages_solutions(result)
+		vis 	= GridVisualizer(;
+								 size 	= (600, 300),
+								 clear 	= true,
+								 legend 	= :rt,
+								 limits 	= (-14, 2),
+								 xlabel 	= "Distance from electrode [m]",
+	 							 ylabel 	= "log c(aᵢ)", 
+								 xscale 	= :log,)
+	    addplot(vis, tsol(vshow), vshow, df=df)
+		reveal(vis)
+	end
+
+	function plot1d(result, celldata)
+    	tsol  	= LiquidElectrolytes.voltages_solutions(result)
+		vis  	= GridVisualizer(; 
+								 size 	= (600, 300),
+								 clear 	= true,
+							 	 legend = :rt,
+								 limits = (-14, 2),
+								 xlabel = "Distance from electrode [m]",
+ 								 ylabel = "log c(aᵢ)", 
+								 xscale = :log,)
+	
+		vrange = result.voltages[1:5:end]
+		movie(vis, file="bufferreactions.gif", framerate=6) do vis
+		for vshow_it in vrange
+			addplot(vis, tsol(vshow_it), vshow_it)
+			reveal(vis)
+		end
+		end
+		isdefined(Main, :PlutoRunner) && LocalResource("bufferreactions.gif")
+	end
+end
+
 # ╔═╡ eea5aa29-85d4-4644-bfe4-4b5244eeb045
 md"""
 # BufferReactions.jl
@@ -48,9 +394,6 @@ md"""
 Demonstration of buffer reactions within the electrolyte of a half-cell in thermodynamical equilibrium
 """
 
-# ╔═╡ b263c6bf-3606-4c3d-9fe1-5d074b294519
-pkgdir(LiquidElectrolytes)
-
 # ╔═╡ 4c355a5e-ccb8-4d23-be5c-adc1aa5f8c96
 md"""
 ## Setup
@@ -61,71 +404,10 @@ md"""
 ### Units
 """
 
-# ╔═╡ e8de40fe-472e-437f-92c8-5f75f5d58601
-begin
-	@unitfactors mol dm eV μA μF cm μm K V m s
-	@phconstants c_0 N_A e k_B
-	F = N_A * e
-end;
-
 # ╔═╡ 28309673-e34e-4bf3-9c53-d04a283364ef
 md"""
 ### Data
 """
-
-# ╔═╡ 2a787207-55ab-4e5b-a9f2-22261ee28a42
-begin
-	const pH 		= 6.8
-	const T 		= (273.15 + 25) * K
-	const C_gap 	= 20 * μF/cm^2
-    const ϕ_pzc 	= 0.16 * V
-	const scheme 	= :μex
-	const vmin 		= -1.5 * V
-	const vmax 		=  0.0 * V
-	const vdelta    = 0.1 * V
-	const nref = 0
-
-	const ikplus      = 1
-    const ihco3       = 2
-    const ico3        = 3
-    const ico2        = 4
-    const ico         = 5
-    const iohminus    = 6
-    const ihplus      = 7
-	const nc 		  = 7
-
-	## CO2 + OH- <=> HCO3-
-	const kbe1 = 4.44e7 / (mol/dm^3)
-	const kbf1 = 5.93e3 / (mol/dm^3) / s
-	const kbr1 = kbf1 / kbe1
-	## HCO3- + OH- <=> CO3-- + H2O
-	const kbe2 = 4.66e3 / (mol/dm^3)
-	const kbf2 = 1.0e8 / (mol/dm^3) / s
-	const kbr2 = kbf2 / kbe2
-
-	## CO2 + H20 <=> HCO3- + H+
-    const kae1 = 4.44e-7 * (mol/dm^3)
-    const kaf1 = 3.7e-2 / s
-    const kar1 = kaf1 / kae1
-    ## HCO3- <=> CO3-- + H+ 
-    const kae2 = 4.66e-5 / (mol/dm^3)
-    const kaf2 = 59.44e3 / (mol/dm^3) / s
-    const kar2 = kaf2 / kae2
-	
-	## autoprotolyse
-    const kwe  = 1.0e-14 * (mol/dm^3)^2
-    const kwf  = 2.4e-5 * (mol/dm^3) / s
-    const kwr  = kwf / kwe
-end;
-
-# ╔═╡ 960fe09f-8bfe-4773-a57e-cbd7774050ce
-const bulk = DataFrame(
-  :name => [      "K⁺", "HCO₃⁻", "CO₃²⁻",  "CO₂",   "CO",     "OH⁻",    "H⁺"],
-  :z 	=> [         1,      -1,      -2,      0,      0,        -1,       1],
-  :D 	=> [  1.957e-9,1.185e-9,0.923e-9,1.91e-9,2.23e-9,  5.273e-9,9.310e-9] * m^2/s,
-  :κ    => [       8.0,     4.0,     4.0,    4.0,    4.0,       4.0,     4.0],
-  :c_bulk=>[0.09105350460641519,0.091,2.68e-5,0.033,0.0,10^(pH-14),10^(-pH)]*mol/dm^3
-)
 
 # ╔═╡ e969bc7f-f0f3-4f70-a522-133ee56cce5e
 md"""
@@ -159,33 +441,6 @@ Autoprotolysis of Water
 $H_2O \rightleftharpoons H^+ + OH^-$
 """
 
-# ╔═╡ 12c99cb0-8a3a-49f5-b49b-92e8e6d63507
-function reaction(f, u::VoronoiFVM.NodeUnknowns{Tv, Tc, Tp, Ti}, node, data) where {Tv, Tc, Tp, Ti}  
-	# buffer reactions
-	rates       = zeros(Tv, 5)
-	## in base
-	## CO2 + OH- <=> HCO3-
-	rates[1]    = kbf1 * u[ico2] * u[iohminus]  - kbr1 * u[ihco3]  
-	## HCO3- + OH- <=> CO3-- + H2O
-	rates[2]    = kbf2 * u[ihco3] * u[iohminus] - kbr2 * u[ico3]
-
-	## in acid
-	## CO2 + H20 <=> HCO3- + H+
-	rates[3]    = kaf1 * u[ico2] - kar1 * u[ihco3] * u[ihplus]  
-	## HCO3- <=> CO3-- + H+ 
-	rates[4]    = kaf2 * u[ihco3] - kar2 * u[ico3] * u[ihplus]  
-
-	## autoprotolyse
-	rates[5]    = kwf - kwr * u[ihplus] * u[iohminus]  
-
-	f[ihco3]    -= rates[1] - rates[2] + rates[3] - rates[4]
-	f[ico3]     -= rates[2] + rates[4]
-	f[ihplus]   -= rates[3] + rates[4] + rates[5]
-	f[iohminus] -= -rates[1] -rates[2] + rates[5]
-
-	nothing
-end;
-
 # ╔═╡ a7b7b5f9-148c-4361-95fb-00930f74c76b
 md"""
 ### Boundary Conditions
@@ -200,78 +455,20 @@ $-ε∇ϕ = C_{gap}~(ϕ_{we} - ϕ_{pzc} - ϕ^‡)$
 where $ϕ^‡$ is the potential at the reaction plane.
 """
 
-# ╔═╡ d45fa649-12b0-47cf-ae9c-a2baed705d8b
-function halfcellbc(f,u, bnode,data)
-	(; Γ_we, Γ_bulk, ϕ_we, iϕ,) = data
-
-	bulkbcondition(f, u, bnode, data; region = Γ_bulk)
-	#boundary_dirichlet!(f, u, bnode; species = iϕ, region = Γ_we, value = ϕ_we)
-
-	# Robin b.c. for the Poisson equation
-	boundary_robin!(f, u, bnode, iϕ, Γ_we , C_gap, C_gap * (ϕ_we - ϕ_pzc))
-	
-	nothing
-end;
-
 # ╔═╡ 73447419-de2a-47dd-ac38-e33823939f25
 md"""
 ### Solver Control
 """
-
-# ╔═╡ 704b905e-b456-4230-b9f7-573aad7660c8
-solver_control = (max_round = 4,
-                  tol_round = 1.0e-8,
-                  reltol 	= 1.0e-8,
-                  abstol 	= 1.0e-9,
-                  verbose 	= "",
-                  maxiters 	= 20);
 
 # ╔═╡ 2fbe5a81-063a-4e84-8799-c5acde5000cf
 md"""
 ## Nernst-Planck Halfcell
 """
 
-# ╔═╡ 115ead90-3694-4493-b1af-974965cba5db
-grid = let
-	hmin    = 1.0e-6 * μm * 2.0^(-nref)
-    hmax    = 1.0 * μm * 2.0^(-nref)
-    L       = 80.0 * μm
-    X       = geomspace(0, L, hmin, hmax)
-    simplexgrid(X)
-end
-
-# ╔═╡ e0f7b4c5-537e-474f-bb3b-3abd765dfdc8
-celldata = ElectrolyteData(; nc 	= nc,
-							 na 	= 0,
-							 z 		= bulk.z,
-							 D 		= bulk.D,
-							 T 		= T,
-							 eneutral = false,
-							 κ 		= bulk.κ,
-							 c_bulk = bulk.c_bulk,
-							 Γ_we 	= 1,
-							 Γ_bulk = 2,
-							 scheme);
-
-# ╔═╡ eff87b3e-0bc4-440f-93c9-9bd06e285a2e
-@test isincompressible(celldata.c_bulk, celldata)
-
-# ╔═╡ 4e31f737-1dc2-4505-8a1c-9ac523c220f3
-@test iselectroneutral(celldata.c_bulk, celldata)
-
-# ╔═╡ 5a7d3d0f-d337-44d2-b283-5b760bd3d14b
- cell = PNPSystem(grid; bcondition=halfcellbc, reaction=reaction, celldata)
-
-# ╔═╡ 40a4a273-e60c-40e8-8594-e041a95dcf5e
-result = ivsweep(cell; voltages=vmin:vdelta:vmax, store_solutions=true, solver_control...)
-
 # ╔═╡ e129c6b4-3e6a-4fbf-b6cc-5e87335142a4
 md"""
 ### Results
 """
-
-# ╔═╡ f73f98b6-2e0c-45a6-ab3c-611fa45c2d13
-(~, default_index) = findmin(abs, result.voltages .+ 0.9 * ufac"V");
 
 # ╔═╡ 9c609ace-f84d-45cb-8c65-6e29b548206d
 md"""
@@ -284,11 +481,6 @@ Potential at the working electrode
 $(vshow = result.voltages[vindex]; @sprintf("%+1.4f", vshow))
 """
 
-# ╔═╡ 9636ac24-d78c-4f2b-b50b-eaa8313bca2a
-md"""
-Plot only the pH-value: $(@bind useonly_pH PlutoUI.CheckBox(default=false))
-"""
-
 # ╔═╡ 52051ed4-342e-48e2-a759-ee6c73378f3a
 md"""
 Compare with __Supplementary Figure 20__ in *Double layer charging driven carbon dioxide
@@ -296,88 +488,16 @@ adsorption limits the rate of electrochemical
 carbon dioxide reduction on Gold* by __Ringe et al.__ in *Nature Communications*.
 """
 
+# ╔═╡ 2856bb6b-7478-4696-98f4-ed5e233cb4ca
+plot1d(result, celldata, vshow, df)
+
+# ╔═╡ ceca65be-3614-4164-a71c-ca7d74e23bdc
+plot1d(result, celldata)
+
 # ╔═╡ 7b21cabc-651b-4bb0-be12-c0cccbc8b352
 md"""
 ### Plotting Functions
 """
-
-# ╔═╡ bf4d2747-0b36-41b5-a779-179f1897a4c6
-begin
-	function addplot(vis, sol, vshow)
-		species = bulk.name
-		colors = [:orange, :brown, :violet, :red, :blue, :green, :gray]
-		
-		scale = 1.0 / (mol / dm^3)
-	    title = @sprintf("Φ_we=%+1.2f", vshow)
-	
-		if useonly_pH
-			scalarplot!(vis, 
-					    grid.components[XCoordinates] .+ 1.0e-14, 
-					    log10.(sol[ihplus, :] * scale), 
-					    color = colors[7],
-					    label = species[7],
-					    clear = true,
-						title = title)
-		else
-			scalarplot!(vis, 
-						grid.components[XCoordinates] .+ 1.0e-14, 
-						log10.(sol[1, :] * scale), 
-						color = colors[1],
-						label = species[1],
-						clear = true,
-						title = title)
-			for ia = 2:nc			
-				scalarplot!(vis, 
-						    grid.components[XCoordinates] .+ 1.0e-14, 
-						    log10.(sol[ia, :] * scale), 
-						    color = colors[ia],
-						    label = species[ia],
-						    clear = false,)
-			end
-		end
-	end
-
-	function plot1d(result, celldata, vshow)
-		tsol 	= LiquidElectrolytes.voltages_solutions(result)
-		vis 	= GridVisualizer(;
-								 size 	= (600, 300),
-								 clear 	= true,
-								 legend 	= :rt,
-								 limits 	= (-14, 2),
-								 xlabel 	= "Distance from electrode [m]",
-	 							 ylabel 	= "log c(aᵢ)", 
-								 xscale 	= :log,)
-	    addplot(vis, tsol(vshow), vshow)
-		reveal(vis)
-	end
-
-	function plot1d(result, celldata)
-    	tsol  	= LiquidElectrolytes.voltages_solutions(result)
-		vis  	= GridVisualizer(; 
-								 size 	= (600, 300),
-								 clear 	= true,
-							 	 legend = :rt,
-								 limits = (-14, 2),
-								 xlabel = "Distance from electrode [m]",
- 								 ylabel = "log c(aᵢ)", 
-								 xscale = :log,)
-	
-		vrange = result.voltages[1:5:end]
-		movie(vis, file="bufferreactions.gif", framerate=6) do vis
-		for vshow_it in vrange
-			addplot(vis, tsol(vshow_it), vshow_it)
-			reveal(vis)
-		end
-		end
-		isdefined(Main, :PlutoRunner) && LocalResource("bufferreactions.gif")
-	end
-end
-
-# ╔═╡ 2856bb6b-7478-4696-98f4-ed5e233cb4ca
-plot1d(result, celldata, vshow)
-
-# ╔═╡ ceca65be-3614-4164-a71c-ca7d74e23bdc
-plot1d(result, celldata)
 
 # ╔═╡ 2a1ff350-0da1-4fa0-9e8d-2975c6d2d81e
 TableOfContents(title="📚 Table of Contents", indent=true, depth=4, aside=true)
@@ -428,11 +548,13 @@ PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 ExtendableGrids = "cfc395e8-590f-11e8-1f13-43a2532b2fa8"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 GridVisualize = "5eed8a63-0fb0-45eb-886d-8d5a387d12b8"
 HypertextLiteral = "ac1192a8-f4b3-4bfe-ba22-af5b92cd3ab2"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
+Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
 LessUnitful = "f29f6376-6e90-4d80-80c9-fb8ec61203d5"
 LiquidElectrolytes = "5a7dfd8c-b3af-4c8d-a082-d3a774d75e72"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
@@ -445,10 +567,12 @@ VoronoiFVM = "82b139dc-5afc-11e9-35da-9b9bdfd336f3"
 [compat]
 CairoMakie = "~0.10.8"
 DataFrames = "~1.6.1"
+DelimitedFiles = "~1.9.1"
 ExtendableGrids = "~1.1.0"
 ForwardDiff = "~0.10.35"
 GridVisualize = "~1.1.4"
 HypertextLiteral = "~0.9.4"
+Interpolations = "~0.14.7"
 LessUnitful = "~0.6.1"
 LiquidElectrolytes = "~0.2.0"
 PlutoUI = "~0.7.52"
@@ -460,9 +584,9 @@ VoronoiFVM = "~1.13.1"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.9.2"
+julia_version = "1.10.0-beta2"
 manifest_format = "2.0"
-project_hash = "df4746409ad341cba39993d84b67e7f5dc0dcadf"
+project_hash = "550c07fb02b1513545e0fbad66fc048bc6570f3c"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "f5c25e8a5b29b5e941b7408bc8cc79fea4d9ef9a"
@@ -746,7 +870,7 @@ weakdeps = ["Dates", "LinearAlgebra"]
 [[deps.CompilerSupportLibraries_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
-version = "1.0.5+0"
+version = "1.0.5+1"
 
 [[deps.CompositeTypes]]
 git-tree-sha1 = "02d2316b7ffceff992f3096ae48c7829a8aa0638"
@@ -815,6 +939,12 @@ weakdeps = ["MakieCore"]
 
     [deps.DelaunayTriangulation.extensions]
     DelaunayTriangulationMakieCoreExt = "MakieCore"
+
+[[deps.DelimitedFiles]]
+deps = ["Mmap"]
+git-tree-sha1 = "9e2f36d3c96a820c678f2f1f1782582fcf685bae"
+uuid = "8bb1440f-4735-579b-a4ab-409b98df4dab"
+version = "1.9.1"
 
 [[deps.DiffResults]]
 deps = ["StaticArraysCore"]
@@ -1475,12 +1605,12 @@ version = "0.6.1"
 [[deps.LibCURL]]
 deps = ["LibCURL_jll", "MozillaCACerts_jll"]
 uuid = "b27032c2-a3e7-50c8-80cd-2d36dbcbfd21"
-version = "0.6.3"
+version = "0.6.4"
 
 [[deps.LibCURL_jll]]
 deps = ["Artifacts", "LibSSH2_jll", "Libdl", "MbedTLS_jll", "Zlib_jll", "nghttp2_jll"]
 uuid = "deac9b47-8bc7-5906-a0fe-35ac56dc84c0"
-version = "7.84.0+0"
+version = "8.0.1+1"
 
 [[deps.LibGit2]]
 deps = ["Base64", "NetworkOptions", "Printf", "SHA"]
@@ -1489,7 +1619,7 @@ uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
 [[deps.LibSSH2_jll]]
 deps = ["Artifacts", "Libdl", "MbedTLS_jll"]
 uuid = "29816b5a-b9ab-546f-933c-edad1886dfa8"
-version = "1.10.2+0"
+version = "1.11.0+1"
 
 [[deps.Libdl]]
 uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
@@ -1673,7 +1803,7 @@ version = "0.5.6"
 [[deps.MbedTLS_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
-version = "2.28.2+0"
+version = "2.28.2+1"
 
 [[deps.Measurements]]
 deps = ["Calculus", "LinearAlgebra", "Printf", "RecipesBase", "Requires"]
@@ -1703,7 +1833,7 @@ version = "0.3.4"
 
 [[deps.MozillaCACerts_jll]]
 uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
-version = "2022.10.11"
+version = "2023.1.10"
 
 [[deps.Multisets]]
 git-tree-sha1 = "8d852646862c96e226367ad10c8af56099b4047e"
@@ -1770,7 +1900,7 @@ version = "1.3.5+1"
 [[deps.OpenBLAS_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
 uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
-version = "0.3.21+4"
+version = "0.3.23+2"
 
 [[deps.OpenEXR]]
 deps = ["Colors", "FileIO", "OpenEXR_jll"]
@@ -1787,7 +1917,7 @@ version = "3.1.4+0"
 [[deps.OpenLibm_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "05823500-19ac-5b8b-9628-191a04bc5112"
-version = "0.8.1+0"
+version = "0.8.1+2"
 
 [[deps.OpenSSL_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -1821,7 +1951,7 @@ version = "1.6.2"
 [[deps.PCRE2_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "efcefdf7-47ab-520b-bdef-62a2eaa19f15"
-version = "10.42.0+0"
+version = "10.42.0+1"
 
 [[deps.PDMats]]
 deps = ["LinearAlgebra", "SparseArrays", "SuiteSparse"]
@@ -1886,7 +2016,7 @@ version = "0.42.2+0"
 [[deps.Pkg]]
 deps = ["Artifacts", "Dates", "Downloads", "FileWatching", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
-version = "1.9.2"
+version = "1.10.0"
 
 [[deps.PkgVersion]]
 deps = ["Pkg"]
@@ -2016,7 +2146,7 @@ deps = ["InteractiveUtils", "Markdown", "Sockets", "Unicode"]
 uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 
 [[deps.Random]]
-deps = ["SHA", "Serialization"]
+deps = ["SHA"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [[deps.RandomExtensions]]
@@ -2271,6 +2401,7 @@ version = "1.1.1"
 [[deps.SparseArrays]]
 deps = ["Libdl", "LinearAlgebra", "Random", "Serialization", "SuiteSparse_jll"]
 uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+version = "1.10.0"
 
 [[deps.SparseDiffTools]]
 deps = ["ADTypes", "Adapt", "ArrayInterface", "Compat", "DataStructures", "FiniteDiff", "ForwardDiff", "Graphs", "LinearAlgebra", "Reexport", "Requires", "SciMLOperators", "Setfield", "SparseArrays", "StaticArrayInterface", "StaticArrays", "Tricks", "VertexSafeGraphs"]
@@ -2399,7 +2530,7 @@ uuid = "4607b0f0-06f3-5cda-b6b1-a6196a1729e9"
 [[deps.SuiteSparse_jll]]
 deps = ["Artifacts", "Libdl", "Pkg", "libblastrampoline_jll"]
 uuid = "bea87d4a-7f5b-5778-9afe-8cc45184846c"
-version = "5.10.1+6"
+version = "7.2.0+1"
 
 [[deps.SymbolicIndexingInterface]]
 deps = ["DocStringExtensions"]
@@ -2655,7 +2786,7 @@ version = "1.5.0+0"
 [[deps.Zlib_jll]]
 deps = ["Libdl"]
 uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
-version = "1.2.13+0"
+version = "1.2.13+1"
 
 [[deps.isoband_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -2678,7 +2809,7 @@ version = "0.15.1+0"
 [[deps.libblastrampoline_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
-version = "5.8.0+0"
+version = "5.8.0+1"
 
 [[deps.libfdk_aac_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -2707,12 +2838,12 @@ version = "1.3.7+1"
 [[deps.nghttp2_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850ede-7688-5339-a07c-302acd2aaf8d"
-version = "1.48.0+0"
+version = "1.52.0+1"
 
 [[deps.p7zip_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
-version = "17.4.0+0"
+version = "17.4.0+2"
 
 [[deps.x264_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -2738,6 +2869,8 @@ version = "3.5.0+0"
 # ╟─28309673-e34e-4bf3-9c53-d04a283364ef
 # ╠═2a787207-55ab-4e5b-a9f2-22261ee28a42
 # ╠═960fe09f-8bfe-4773-a57e-cbd7774050ce
+# ╠═d2e89d2f-8738-4767-9b3d-3c311c727f1d
+# ╠═f79bc999-369c-4199-8c9d-1f7d659c87dd
 # ╟─e969bc7f-f0f3-4f70-a522-133ee56cce5e
 # ╟─3161211b-3188-4e4f-a12e-5a16cfd5e932
 # ╟─18e13140-2693-4a2b-b8e2-24ae437414cd
@@ -2761,10 +2894,11 @@ version = "3.5.0+0"
 # ╟─9c609ace-f84d-45cb-8c65-6e29b548206d
 # ╟─9636ac24-d78c-4f2b-b50b-eaa8313bca2a
 # ╟─52051ed4-342e-48e2-a759-ee6c73378f3a
-# ╟─2856bb6b-7478-4696-98f4-ed5e233cb4ca
+# ╠═2856bb6b-7478-4696-98f4-ed5e233cb4ca
+# ╠═de92f8fa-2abe-4dec-b2f7-20e2fbbb906f
 # ╟─ceca65be-3614-4164-a71c-ca7d74e23bdc
 # ╟─7b21cabc-651b-4bb0-be12-c0cccbc8b352
-# ╟─bf4d2747-0b36-41b5-a779-179f1897a4c6
+# ╠═bf4d2747-0b36-41b5-a779-179f1897a4c6
 # ╟─c875fc12-4c92-42f9-82ef-34ba242899c9
 # ╠═2a1ff350-0da1-4fa0-9e8d-2975c6d2d81e
 # ╟─4f56ddcf-5001-4f0f-b7de-b9c311f749a4
