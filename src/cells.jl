@@ -249,9 +249,9 @@ Electrode current  for species `ispec`.
 """
 function currents(r::IVSweepResult, ispec; electrode=:we)
     if electrode==:we
-        [ph"F" * j[ispec] for j in r.j_we]
+        [ph"e * N_A" * j[ispec] for j in r.j_we]
     elseif electrode==:bulk
-        [ph"F" * j[ispec] for j in r.j_bulk]
+        [ph"e * N_A" * j[ispec] for j in r.j_bulk]
     else
         error("no such electrode")
     end
