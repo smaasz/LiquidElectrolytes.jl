@@ -1,7 +1,7 @@
 push!(LOAD_PATH,joinpath(@__DIR__,".."))
 push!(LOAD_PATH,joinpath(@__DIR__,"..","examples"))
 
-using Documenter, ExampleJuggler, CairoMakie, LiquidElectrolytes
+using Documenter, ExampleJuggler, CairoMakie, LiquidElectrolytes, PlutoStaticHTML
 ExampleJuggler.verbose!(true)
 
 function make(;with_notebooks=true, with_examples=true)

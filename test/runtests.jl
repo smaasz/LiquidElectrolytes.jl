@@ -4,7 +4,6 @@ using LinearAlgebra
 using ExtendableGrids
 using VoronoiFVM
 using LessUnitful
-using Pluto
 using UUIDs
 using ExampleJuggler
 ExampleJuggler.verbose!(true)
