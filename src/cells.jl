@@ -248,10 +248,11 @@ voltages_currents(r::IVSweepResult, ispec; electrode=:we) = RecursiveArrayTools.
 Electrode current  for species `ispec`.
 """
 function currents(r::IVSweepResult, ispec; electrode=:we)
+    F=ph"N_A"*ph"e"
     if electrode==:we
-        [ph"F" * j[ispec] for j in r.j_we]
+        [F * j[ispec] for j in r.j_we]
     elseif electrode==:bulk
-        [ph"F" * j[ispec] for j in r.j_bulk]
+        [F * j[ispec] for j in r.j_bulk]
     else
         error("no such electrode")
     end
@@ -315,8 +316,8 @@ function ivsweep(sys;
             end
 
             function post(sol, oldsol, ϕ, Δϕ)
-                I_react = -integrate(sys, sys.physics.breaction, sol; boundary = true)[:,
-                                                                                       data.Γ_we]
+                I=-integrate(sys, sys.physics.breaction, sol; boundary = true)
+                I_react=I[:,data.Γ_we]                
                 I_bulk = -integrate(sys, tf_bulk, sol)
                 if dir > 0
                     push!(vplus, data.ϕ_we)
